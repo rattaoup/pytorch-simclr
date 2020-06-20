@@ -36,8 +36,8 @@ parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output fil
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
-args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-args.git_diff = subprocess.check_output(['git', 'diff'])
+# args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+# args.git_diff = subprocess.check_output(['git', 'diff'])
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 best_acc = 0  # best test accuracy
@@ -80,6 +80,13 @@ if device == 'cuda':
     net.representation_dim = repr_dim
     cudnn.benchmark = True
 
+criterion = nn.CrossEntropyLoss()
+base_optimizer = optim.SGD(list(net.parameters()) + list(critic.parameters()), lr=args.lr, weight_decay=1e-6,
+                           momentum=args.momentum)
+if args.cosine_anneal:
+    scheduler = CosineAnnealingWithLinearRampLR(base_optimizer, args.num_epochs)
+encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
+
 if args.resume:
     # Load checkpoint.
     print('==> Resuming from checkpoint..')
@@ -90,13 +97,9 @@ if args.resume:
     critic.load_state_dict(checkpoint['critic'])
     best_acc = checkpoint['acc']
     start_epoch = checkpoint['epoch']
+    encoder_optimizer.load_state_dict(checkpoint['encoder_optim'])
+    base_optimizer.load_state_dict(checkpoint['base_optim'])
 
-criterion = nn.CrossEntropyLoss()
-base_optimizer = optim.SGD(list(net.parameters()) + list(critic.parameters()), lr=args.lr, weight_decay=1e-6,
-                           momentum=args.momentum)
-if args.cosine_anneal:
-    scheduler = CosineAnnealingWithLinearRampLR(base_optimizer, args.num_epochs)
-encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
 
 
 # Training
@@ -129,8 +132,8 @@ for epoch in range(start_epoch, start_epoch + args.num_epochs):
         acc = test(testloader, device, net, clf)
         if acc > best_acc:
             best_acc = acc
-        save_checkpoint(net, clf, critic, epoch, args, os.path.basename(__file__))
+        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer)
     elif args.test_freq == 0:
-        save_checkpoint(net, clf, critic, epoch, args, os.path.basename(__file__))
+        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer)
     if args.cosine_anneal:
         scheduler.step()
