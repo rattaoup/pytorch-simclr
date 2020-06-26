@@ -18,17 +18,10 @@ args = parser.parse_args()
 
 
 
-# Data
-print('==> Preparing data..')
-_, testset, clftrainset, num_classes, stem = get_datasets(args.dataset)
 
-testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
-                                         pin_memory=True)
-clftrainloader = torch.utils.data.DataLoader(clftrainset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
-                                             pin_memory=True)
 
 # Load checkpoint.
-epoch_to_evaluate = [args.start_epochs + 100*i for i in range((args.last_epochs - args.start_epochs)/100)]
+epoch_to_evaluate = [args.start_epochs + 100*i for i in range(int((args.last_epochs - args.start_epochs)/100)+1)]
 resume_from_list = [args.load_from + str(epoch_to_evaluate[i]) for i in range(len(epoch_to_evaluate))]
 best_acc_dict ={}
 for load_from in resume_from_list:
@@ -39,6 +32,14 @@ for load_from in resume_from_list:
     args.dataset = checkpoint['args']['dataset']
     args.arch = checkpoint['args']['arch']
 
+    # Data
+    print('==> Preparing data..')
+    _, testset, clftrainset, num_classes, stem = get_datasets(args.dataset)
+
+    testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
+                                             pin_memory=True)
+    clftrainloader = torch.utils.data.DataLoader(clftrainset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
+                                                 pin_memory=True)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # Model
@@ -76,4 +77,6 @@ for load_from in resume_from_list:
     print("Best test accuracy for model {} is {} %".format(load_from, best_acc))
     best_acc_dict[load_from] = best_acc_dict
 
-print(best_acc_dict)
+for file in best_acc_dict:
+    print(file)
+    print(best_acc_dict[file])
