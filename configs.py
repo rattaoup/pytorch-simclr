@@ -43,9 +43,9 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
     transform_train = transforms.Compose([
         transforms.RandomResizedCrop(img_size, interpolation=Image.BICUBIC),
         transforms.RandomHorizontalFlip(),
-        ColourDistortion(s=0.5),
+        # ColourDistortion(s=0.5),
         transforms.ToTensor(),
-        transforms.Normalize(*CACHED_MEAN_STD[dataset]),
+        # transforms.Normalize(*CACHED_MEAN_STD[dataset]),
     ])
 
     if test_as_train:
@@ -57,12 +57,12 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
                 transforms.Resize(256),
                 transforms.CenterCrop(224),
                 transforms.ToTensor(),
-                transforms.Normalize(*CACHED_MEAN_STD[dataset]),
+                # transforms.Normalize(*CACHED_MEAN_STD[dataset]),
             ])
         else:
             transform_test = transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Normalize(*CACHED_MEAN_STD[dataset]),
+                # transforms.Normalize(*CACHED_MEAN_STD[dataset]),
             ])
 
         if augment_clf_train:
@@ -70,7 +70,7 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
                 transforms.RandomResizedCrop(img_size, interpolation=Image.BICUBIC),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize(*CACHED_MEAN_STD[dataset]),
+                # transforms.Normalize(*CACHED_MEAN_STD[dataset]),
             ])
         else:
             transform_clftrain = transform_test
