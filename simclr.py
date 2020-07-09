@@ -12,10 +12,10 @@ from tqdm import tqdm
 
 from configs import get_datasets
 from critic import LinearCritic
-from evaluate import save_checkpoint, encode_train_set, train_clf, test
+from evaluate import save_checkpoint,save_checkpoint2, encode_train_set, train_clf, test
 from models import *
 from scheduler import CosineAnnealingWithLinearRampLR
-from augmentation import DifferentiableColourDistortion
+from augmentation import DifferentiableColourDistortion, DifferentiableColourDistortionByTorch
 
 parser = argparse.ArgumentParser(description='PyTorch Contrastive Learning.')
 parser.add_argument('--base-lr', default=0.25, type=float, help='base learning rate, rescaled by batch_size/256')
@@ -76,6 +76,10 @@ net = net.to(device)
 critic = LinearCritic(net.representation_dim, temperature=args.temperature).to(device)
 aug = DifferentiableColourDistortion()
 
+#differentiable augmentation
+s = 1.0
+aug_by_torch = DifferentiableColourDistortionByTorch(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+
 if device == 'cuda':
     repr_dim = net.representation_dim
     net = torch.nn.DataParallel(net)
@@ -113,7 +117,8 @@ def train(epoch):
     for batch_idx, (inputs, _, _) in t:
         x1, x2 = inputs
         x1, x2 = x1.to(device), x2.to(device)
-        x1, x2 = aug(x1), aug(x2)
+#         x1, x2 = aug(x1), aug(x2)
+        x1, x2 = aug_by_torch(x1), aug_by_torch(x2)
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
         raw_scores, pseudotargets = critic(representation1, representation2)
