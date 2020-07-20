@@ -37,6 +37,8 @@ parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit 
                                                               'Not appropriate for large datasets. Set 0 to avoid '
                                                               'classifier only training here.')
 parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output file name')
+parser.add_argument("--norm", type=int, default=2, help='Norm for gradient penalty')
+parser.add_argument("--lambda-gp", type=float, default=0.001, help='lambda_gp for gradient penalty')
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
@@ -167,11 +169,12 @@ def train(epoch):
             gradient_lambda.append(gradients_augvar)
 
         gradient_lambda = torch.stack(gradient_lambda, dim = 0)
+        gradient_lambda = gradient_lambda.transpose(0,1)
 
-        # currently gradient_lamba.sum([0]).sqrt() has nan element? so I use norm instead
-        gradient_penalty = gradient_lambda.sum([0]).norm(2)
+        # take norm before mean
+        gradient_penalty = gradient_lambda.norm(p=args.norm, dim=1).mean(0)
 
-        loss_gp = loss + 0.0001*gradient_penalty
+        loss_gp = loss + args.lambda_gp *gradient_penalty
         loss_gp.backward()
         encoder_optimizer.step()
 
