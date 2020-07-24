@@ -134,20 +134,20 @@ def train(epoch):
                                                                                    contrast_bound,
                                                                                    saturation_bound,
                                                                                    hue_bound)
-        aug_manual1 = DifferentiableColourDistortionByTorch_manual(brightness = brightness_list1,
-                                                                  contrast = contrast_list1,
-                                                                  saturation = saturation_list1,
-                                                                  hue = hue_list1)
-
         brightness_list2, saturation_list2, contrast_list2, hue_list2 = gen_lambda(B, brightness_bound,
                                                                                    contrast_bound,
                                                                                    saturation_bound,
                                                                                    hue_bound)
-
-        aug_manual2 = DifferentiableColourDistortionByTorch_manual(brightness = brightness_list2,
-                                                                  contrast = contrast_list2,
-                                                                  saturation = saturation_list2,
-                                                                  hue = hue_list2)
+        lambda_ = torch.stack([brightness_list1, saturation_list1, contrast_list1, hue_list1,
+                               brightness_list2, saturation_list2, contrast_list2, hue_list2], dim=1)
+        aug_manual1 = DifferentiableColourDistortionByTorch_manual(brightness = lambda_[:,0],
+                                                                   contrast = lambda_[:,1],
+                                                                   saturation = lambda_[:,2],
+                                                                   hue = lambda_[:,3])
+        aug_manual2 = DifferentiableColourDistortionByTorch_manual(brightness = lambda_[:,4],
+                                                                   contrast = lambda_[:,5],
+                                                                   saturation = lambda_[:,6],
+                                                                   hue = lambda_[:,7])
 
         x1, x2 = aug_manual1(x1), aug_manual2(x2)
         x1, x2 = ManualNormalise(x1, args.dataset), ManualNormalise(x2, args.dataset)
@@ -156,25 +156,16 @@ def train(epoch):
         representation1, representation2 = net(x1), net(x2)
         raw_scores, pseudotargets = critic(representation1, representation2)
         loss = criterion(raw_scores, pseudotargets)
-        #gradient penalty
-        gradient_lambda = []
-        lambda_list = [brightness_list1, saturation_list1, contrast_list1, hue_list1,
-                       brightness_list2, saturation_list2, contrast_list2, hue_list2 ]
 
-        for aug_variable in lambda_list:
-            gradients_augvar =  autograd.grad(outputs = loss,
-                                 inputs = aug_variable,
-                                 retain_graph = True,
-                                 grad_outputs = torch.ones_like(aug_variable).to(device))[0]
-            gradient_lambda.append(gradients_augvar)
-
-        gradient_lambda = torch.stack(gradient_lambda, dim = 0)
-        gradient_lambda = gradient_lambda.transpose(0,1)
+        # Gradient penalty
+        gradient_lambda =  autograd.grad(outputs = loss,
+                                 inputs = lambda_,
+                                 retain_graph = True)[0]
 
         # take norm before mean
         gradient_penalty = gradient_lambda.norm(p=args.norm, dim=1).mean(0)
 
-        loss_gp = loss + args.lambda_gp *gradient_penalty
+        loss_gp = loss + args.lambda_gp * gradient_penalty
         loss_gp.backward()
         encoder_optimizer.step()
 
