@@ -20,6 +20,7 @@ from torchvision import transforms
 
 import torch.autograd as autograd
 
+
 parser = argparse.ArgumentParser(description='PyTorch Contrastive Learning.')
 parser.add_argument('--base-lr', default=0.25, type=float, help='base learning rate, rescaled by batch_size/256')
 parser.add_argument("--momentum", default=0.9, type=float, help='SGD momentum')
@@ -48,6 +49,7 @@ args.lr = args.base_lr * (args.batch_size / 256)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
+last_epoch = args.num_epochs #last epoch or from last epoch from checkpoint
 clf = None
 
 print('==> Preparing data..')
@@ -109,10 +111,15 @@ if args.resume:
     checkpoint = torch.load(resume_from)
     net.load_state_dict(checkpoint['net'])
     critic.load_state_dict(checkpoint['critic'])
-    best_acc = checkpoint['acc']
-    start_epoch = checkpoint['epoch']
+#     best_acc = checkpoint['acc']
+    start_epoch = checkpoint['epoch'] + 1
     encoder_optimizer.load_state_dict(checkpoint['encoder_optim'])
     base_optimizer.load_state_dict(checkpoint['base_optim'])
+    scheduler.step(start_epoch)
+    if 'num_epochs' in checkpoint:
+        last_epoch = checkpoint['num_epochs']
+    else:
+        last_epoch = 1000 #default value for num epochs = 1000
 
 
 
@@ -123,6 +130,8 @@ def train(epoch):
     net.train()
     critic.train()
     train_loss = 0
+    sum_gradient = 0
+    train_loss_nogp = 0
     t = tqdm(enumerate(trainloader), desc='Loss: **** ', total=len(trainloader), bar_format='{desc}{bar}{r_bar}')
     for batch_idx, (inputs, _, _) in t:
         x1, x2 = inputs
@@ -159,31 +168,38 @@ def train(epoch):
 
         # Gradient penalty
         gradient_lambda =  autograd.grad(outputs = loss,
-                                 inputs = lambda_,
-                                 retain_graph = True)[0]
+                             inputs = lambda_,
+                             create_graph = True,
+                             retain_graph = True,
+                             only_inputs = True)[0]
 
         # take norm before mean
         gradient_penalty = gradient_lambda.norm(p=args.norm, dim=1).mean(0)
 
-        loss_gp = loss + args.lambda_gp * gradient_penalty
+
+        loss_gp = loss + args.lambda_gp * gradient_penalty.to(device)
         loss_gp.backward()
         encoder_optimizer.step()
 
         train_loss += loss_gp.item()
+        sum_gradient += gradient_penalty
+        train_loss_nogp += loss
 
-        t.set_description('Loss: %.3f ' % (train_loss / (batch_idx + 1)))
+        t.set_description('gp: {:0.5f} ,  loss: {:0.3f},  final_loss: {:0.3f}'.format((sum_gradient / (batch_idx + 1)), (train_loss_nogp / (batch_idx + 1)), (train_loss / (batch_idx + 1))))
 
 
-for epoch in range(start_epoch, start_epoch + args.num_epochs):
+for epoch in range(start_epoch, last_epoch):
     train(epoch)
+
+    # gradient
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
         X, y = encode_train_set(clftrainloader, device, net)
         clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=1e-5)
         acc = test(testloader, device, net, clf)
         if acc > best_acc:
             best_acc = acc
-        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer)
+        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs)
     elif args.test_freq == 0:
-        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer)
+        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs)
     if args.cosine_anneal:
         scheduler.step()
