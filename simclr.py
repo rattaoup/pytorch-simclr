@@ -15,7 +15,7 @@ from critic import LinearCritic
 from evaluate import save_checkpoint,save_checkpoint2, encode_train_set, train_clf, test
 from models import *
 from scheduler import CosineAnnealingWithLinearRampLR
-from augmentation import DifferentiableColourDistortion, DifferentiableColourDistortionByTorch, ManualNormalise, DifferentiableColourDistortionByTorch2
+from augmentation import ManualNormalise, DifferentiableColourDistortionByTorch3
 from torchvision import transforms
 
 parser = argparse.ArgumentParser(description='PyTorch Contrastive Learning.')
@@ -44,6 +44,8 @@ args.lr = args.base_lr * (args.batch_size / 256)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
+last_epoch = args.num_epochs #last epoch or from last epoch from checkpoint
+
 clf = None
 
 print('==> Preparing data..')
@@ -75,13 +77,12 @@ net = net.to(device)
 # Critic
 ##############################################################
 critic = LinearCritic(net.representation_dim, temperature=args.temperature).to(device)
-aug = DifferentiableColourDistortion()
+# aug = DifferentiableColourDistortion()
 
 
 #differentiable augmentation
 s = 1.0
-aug_by_torch = DifferentiableColourDistortionByTorch(0.8*s, 0.8*s, 0.8*s, 0.2*s)
-aug_by_torch_batch = DifferentiableColourDistortionByTorch2(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+aug_by_torch_batch = DifferentiableColourDistortionByTorch3(0.8*s, 0.8*s, 0.8*s, 0.2*s)
 
 if device == 'cuda':
     repr_dim = net.representation_dim
@@ -104,11 +105,15 @@ if args.resume:
     checkpoint = torch.load(resume_from)
     net.load_state_dict(checkpoint['net'])
     critic.load_state_dict(checkpoint['critic'])
-    best_acc = checkpoint['acc']
-    start_epoch = checkpoint['epoch']
+#     best_acc = checkpoint['acc']
+    start_epoch = checkpoint['epoch']+1
     encoder_optimizer.load_state_dict(checkpoint['encoder_optim'])
     base_optimizer.load_state_dict(checkpoint['base_optim'])
-
+    scheduler.step(start_epoch)
+    if 'num_epochs' in checkpoint:
+        last_epoch = checkpoint['num_epochs']
+    else:
+        last_epoch = 1000 #default value for num epochs = 1000
 
 
 
@@ -139,7 +144,7 @@ def train(epoch):
         t.set_description('Loss: %.3f ' % (train_loss / (batch_idx + 1)))
 
 
-for epoch in range(start_epoch, start_epoch + args.num_epochs):
+for epoch in range(start_epoch, last_epoch):
     train(epoch)
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
         X, y = encode_train_set(clftrainloader, device, net)
@@ -147,8 +152,8 @@ for epoch in range(start_epoch, start_epoch + args.num_epochs):
         acc = test(testloader, device, net, clf)
         if acc > best_acc:
             best_acc = acc
-        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer)
+        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs)
     elif args.test_freq == 0:
-        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer)
+        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs)
     if args.cosine_anneal:
         scheduler.step()
