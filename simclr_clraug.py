@@ -12,13 +12,14 @@ from tqdm import tqdm
 
 from configs import get_datasets
 from critic import LinearCritic
-from evaluate import save_checkpoint,save_checkpoint2, encode_train_set, train_clf, test
+from evaluate import save_checkpoint,save_checkpoint2, encode_train_set, train_clf, test, update_checkpoint
 from models import *
 from scheduler import CosineAnnealingWithLinearRampLR
 from augmentation import ManualNormalise, DifferentiableColourDistortionByTorch_manual, gen_lambda
 from torchvision import transforms
 
 import torch.autograd as autograd
+
 
 
 parser = argparse.ArgumentParser(description='PyTorch Contrastive Learning.')
@@ -51,6 +52,8 @@ best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 last_epoch = args.num_epochs #last epoch or from last epoch from checkpoint
 clf = None
+current_checkpoint = {}
+acc = 0
 
 print('==> Preparing data..')
 trainset, testset, clftrainset, num_classes, stem = get_datasets(args.dataset)
@@ -120,6 +123,7 @@ if args.resume:
         last_epoch = checkpoint['num_epochs']
     else:
         last_epoch = 1000 #default value for num epochs = 1000
+    current_checkpoint = checkpoint
 
 
 
@@ -187,9 +191,12 @@ def train(epoch):
 
         t.set_description('gp: {:0.5f} ,  loss: {:0.3f},  final_loss: {:0.3f}'.format((sum_gradient / (batch_idx + 1)), (train_loss_nogp / (batch_idx + 1)), (train_loss / (batch_idx + 1))))
 
+    return (sum_gradient / (batch_idx + 1)), (train_loss_nogp / (batch_idx + 1)), (train_loss / (batch_idx + 1))
+
 
 for epoch in range(start_epoch, last_epoch):
-    train(epoch)
+#     print(current_checkpoint)
+    gradient_penalty, contrastive_loss, final_loss = train(epoch)
 
     # gradient
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
@@ -198,8 +205,8 @@ for epoch in range(start_epoch, last_epoch):
         acc = test(testloader, device, net, clf)
         if acc > best_acc:
             best_acc = acc
-        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs)
+        current_checkpoint = update_checkpoint(current_checkpoint, net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs, gradient_penalty, contrastive_loss, final_loss, acc)
     elif args.test_freq == 0:
-        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs)
+        current_checkpoint = update_checkpoint(current_checkpoint, net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs, gradient_penalty, contrastive_loss, final_loss, acc)
     if args.cosine_anneal:
         scheduler.step()

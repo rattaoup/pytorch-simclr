@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from configs import get_datasets
 from critic import LinearCritic
-from evaluate import save_checkpoint,save_checkpoint2, encode_train_set, train_clf, test
+from evaluate import save_checkpoint,save_checkpoint2, encode_train_set, train_clf, test, update_checkpoint
 from models import *
 from scheduler import CosineAnnealingWithLinearRampLR
 from augmentation import ManualNormalise, DifferentiableColourDistortionByTorch3
@@ -47,6 +47,8 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 last_epoch = args.num_epochs #last epoch or from last epoch from checkpoint
 
 clf = None
+current_checkpoint = {} # current checkpoint file
+acc = 0
 
 print('==> Preparing data..')
 trainset, testset, clftrainset, num_classes, stem = get_datasets(args.dataset)
@@ -114,6 +116,7 @@ if args.resume:
         last_epoch = checkpoint['num_epochs']
     else:
         last_epoch = 1000 #default value for num epochs = 1000
+    current_checkpoint = checkpoint #load checkpoint file
 
 
 
@@ -143,17 +146,21 @@ def train(epoch):
 
         t.set_description('Loss: %.3f ' % (train_loss / (batch_idx + 1)))
 
+    return (train_loss / (batch_idx + 1)) #return loss to keep it in the checkpointfile
+
+
+
 
 for epoch in range(start_epoch, last_epoch):
-    train(epoch)
+    final_loss = train(epoch)
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
         X, y = encode_train_set(clftrainloader, device, net)
         clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=1e-5)
         acc = test(testloader, device, net, clf)
         if acc > best_acc:
             best_acc = acc
-        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs)
+        current_checkpoint = update_checkpoint(current_checkpoint, net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs, 1, 1, final_loss, acc)
     elif args.test_freq == 0:
-        save_checkpoint2(net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs)
+        current_checkpoint = update_checkpoint(current_checkpoint, net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs, 1, 1, final_loss, acc)
     if args.cosine_anneal:
         scheduler.step()
