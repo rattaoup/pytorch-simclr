@@ -66,7 +66,7 @@ def adjust_hue(img, scale):
         raise ValueError
 
     T_final = torch.matmul(torch.matmul(T_rgb, T_hue), T_yiq)
-    return rmv(T_final, img.transpose(1, -1)).transpose(-1, 1)
+    return rmv(T_final, img.transpose(0, -1)).transpose(-1, 0)
 
 
 class TensorGrayscale(nn.Module):
