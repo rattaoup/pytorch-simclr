@@ -104,6 +104,9 @@ batch_transform = transforms.Compose([
         ColourDistortion(s=0.5),
         TensorNormalise(*get_mean_std(args.dataset), device=device),
     ])
+if device == 'cuda':
+    batch_transform = torch.nn.DataParallel(batch_transform)
+
 
 # Training
 def train(epoch):
