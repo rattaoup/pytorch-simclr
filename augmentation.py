@@ -21,10 +21,10 @@ def BlurOrSharpen(radius=2.):
 
 
 def grayscale(img):
-    if img.ndims == 3:
+    if len(img.shape) == 3:
         output = 0.2990 * img[0, ...] + 0.5870 * img[1, ...] + 0.1140 * img[2, ...]
         return output.unsqueeze(0)
-    elif img.ndims == 4:
+    elif len(img.shape) == 4:
         output = 0.2990 * img[:, 0, ...] + 0.5870 * img[:, 1, ...] + 0.1140 * img[:, 2, ...]
         return output.unsqueeze(1)
     else:
@@ -53,7 +53,8 @@ def adjust_hue(img, scale):
 class TensorGrayscale(nn.Module):
 
     def forward(self, x):
-        return grayscale(x)
+        shape = x.shape
+        return grayscale(x).expand(shape)
 
 
 class TensorColorJitter(nn.Module):
