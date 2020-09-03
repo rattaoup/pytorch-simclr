@@ -167,47 +167,50 @@ class TensorColorJitter(nn.Module):
         if len(img.shape) == 3:
             if self.brightness is not None:
                 brightness = self.brightness
-                brightness_factor = torch.tensor(1.0).uniform_(brightness[0], brightness[1]).item()
+                brightness_factor = torch.tensor(1.0).uniform_(brightness[0], brightness[1]).requires_grad_(True)
                 img = adjust_brightness(img, brightness_factor)
 
             if self.contrast is not None:
                 contrast = self.contrast
-                contrast_factor = torch.tensor(1.0).uniform_(contrast[0], contrast[1]).item()
+                contrast_factor = torch.tensor(1.0).uniform_(contrast[0], contrast[1]).requires_grad_(True)
                 img = adjust_contrast(img, contrast_factor)
 
             if self.saturation is not None:
                 saturation = self.saturation
-                saturation_factor = torch.tensor(1.0).uniform_(saturation[0], saturation[1]).item()
+                saturation_factor = torch.tensor(1.0).uniform_(saturation[0], saturation[1]).requires_grad_(True)
                 img = adjust_saturation(img, saturation_factor)
 
             if self.hue is not None:
                 hue = self.hue
-                hue_factor = torch.tensor(1.0).uniform_(hue[0], hue[1]).item()
+                hue_factor = torch.tensor(1.0).uniform_(hue[0], hue[1]).requires_grad_(True)
                 img = adjust_hue(img, hue_factor)
 
         elif len(img.shape) == 4:
             B = img.shape[0]
             if self.brightness is not None:
                 brightness = self.brightness
-                brightness_factor = torch.ones(B, 1, 1, 1, device=img.device).uniform_(brightness[0], brightness[1])
-                img = adjust_brightness(img, brightness_factor)
+                brightness_factor = torch.ones(B, device=img.device).uniform_(brightness[0], brightness[1]).requires_grad_(True)
+                img = adjust_brightness(img, brightness_factor.reshape((B, 1, 1, 1)))
 
             if self.contrast is not None:
                 contrast = self.contrast
-                contrast_factor = torch.ones(B, 1, 1, 1, device=img.device).uniform_(contrast[0], contrast[1])
-                img = adjust_contrast(img, contrast_factor)
+                contrast_factor = torch.ones(B, device=img.device).uniform_(contrast[0], contrast[1]).requires_grad_(True)
+                img = adjust_contrast(img, contrast_factor.reshape((B, 1, 1, 1)))
 
             if self.saturation is not None:
                 saturation = self.saturation
-                saturation_factor = torch.ones(B, 1, 1, 1, device=img.device).uniform_(saturation[0], saturation[1])
-                img = adjust_saturation(img, saturation_factor)
+                saturation_factor = torch.ones(B, device=img.device).uniform_(saturation[0], saturation[1]).requires_grad_(True)
+                img = adjust_saturation(img, saturation_factor.reshape((B, 1, 1, 1)))
 
             if self.hue is not None:
                 hue = self.hue
-                hue_factor = torch.ones(B, device=img.device).uniform_(hue[0], hue[1])
+                hue_factor = torch.ones(B, device=img.device).uniform_(hue[0], hue[1]).requires_grad_(True)
                 img = adjust_hue(img, hue_factor)
 
-        return img
+        else:
+            raise ValueError("Unexpected input shape length")
+
+        return img, brightness_factor, contrast_factor, saturation_factor, hue_factor
 
 
 class ImageFilterTransform(object):
