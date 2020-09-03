@@ -3,6 +3,7 @@ from PIL import ImageFilter
 from torchvision import transforms
 import torch
 from torch import nn
+from math import pi
 
 
 def ColourDistortion(s=1.0):
@@ -31,6 +32,10 @@ def grayscale(img):
         raise ValueError("Unexpected number of dimensions for grayscale conversion")
 
 
+def rmv(matrix, vector):
+    return matrix.matmul(vector.unsqueeze(-1)).squeeze(-1)
+
+
 def adjust_brightness(img, scale):
     y = img * scale
     return y.clamp(min=0, max=1)
@@ -47,7 +52,21 @@ def adjust_contrast(img, scale):
 
 
 def adjust_hue(img, scale):
-    return img
+
+    scale = 2 * pi * torch.as_tensor(scale, device=img.device)
+
+    T_yiq = torch.tensor([[0.299, 0.587, 0.114], [0.596, -0.274, -0.321], [0.211, -0.523, 0.311]], device=img.device)
+    T_rgb = torch.tensor([[1, 0.956, 0.621], [1, -0.272, -0.647], [1, -1.107, 1.705]], device=img.device)
+
+    if len(img.shape) == 3:
+        T_hue = torch.tensor([1, 0, 0,
+                              0, torch.cos(scale), -torch.sin(scale),
+                              0, -torch.sin(scale), torch.cos(scale)], device=img.device).reshape(3, 3)
+    else:
+        raise ValueError
+
+    T_final = torch.matmul(torch.matmul(T_rgb, T_hue), T_yiq)
+    return rmv(T_final, img.transpose(1, -1)).transpose(-1, 1)
 
 
 class TensorGrayscale(nn.Module):
@@ -94,7 +113,7 @@ class TensorColorJitter(nn.Module):
         Returns:
             PIL Image or Tensor: Color jittered image.
         """
-        fn_idx = torch.randperm(4)
+        fn_idx = [0, 1, 2, 3]
         for fn_id in fn_idx:
             if fn_id == 0 and self.brightness is not None:
                 brightness = self.brightness
