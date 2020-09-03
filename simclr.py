@@ -7,11 +7,10 @@ import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
-import torchvision.transforms as transforms
 from torchlars import LARS
 from tqdm import tqdm
 
-from augmentation import ColourDistortion, TensorNormalise
+from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from configs import get_datasets, get_mean_std
 from critic import LinearCritic
 from evaluate import save_checkpoint, encode_train_set, train_clf, test
@@ -100,10 +99,10 @@ if args.cosine_anneal:
     scheduler = CosineAnnealingWithLinearRampLR(base_optimizer, args.num_epochs)
 encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
 
-batch_transform = transforms.Compose([
+batch_transform = ModuleCompose([
         ColourDistortion(s=0.5),
-        TensorNormalise(*get_mean_std(args.dataset), device=device),
-    ])
+        TensorNormalise(*get_mean_std(args.dataset))
+    ]).to(device)
 if device == 'cuda':
     batch_transform = torch.nn.DataParallel(batch_transform)
 
