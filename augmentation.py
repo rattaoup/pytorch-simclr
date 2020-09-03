@@ -79,10 +79,10 @@ def adjust_hue(img, scale):
 
 class TensorNormalise(nn.Module):
 
-    def __init__(self, mean, std):
+    def __init__(self, mean, std, device='cpu'):
         super().__init__()
-        self.mean = torch.tensor(mean).unsqueeze(-1).unsqueeze(-1)
-        self.std = torch.tensor(std).unsqueeze(-1).unsqueeze(-1)
+        self.mean = torch.tensor(mean, device=device).unsqueeze(-1).unsqueeze(-1)
+        self.std = torch.tensor(std, device=device).unsqueeze(-1).unsqueeze(-1)
 
     def forward(self, x):
         return (x - self.mean) / self.std
@@ -104,7 +104,7 @@ class TensorRandomApply(nn.Module):
         elif len(x.shape) == 4:
             B = x.shape[0]
             y = self.transform(x)
-            apply_indicator = torch.bernoulli(self.p * torch.ones(B, 1, 1, 1))
+            apply_indicator = torch.bernoulli(self.p * torch.ones(B, 1, 1, 1, device=x.device))
             return y * apply_indicator + (1 - apply_indicator) * x
 
 
@@ -177,22 +177,22 @@ class TensorColorJitter(nn.Module):
             B = img.shape[0]
             if self.brightness is not None:
                 brightness = self.brightness
-                brightness_factor = torch.ones(B, 1, 1, 1).uniform_(brightness[0], brightness[1])
+                brightness_factor = torch.ones(B, 1, 1, 1, device=img.device).uniform_(brightness[0], brightness[1])
                 img = adjust_brightness(img, brightness_factor)
 
             if self.contrast is not None:
                 contrast = self.contrast
-                contrast_factor = torch.ones(B, 1, 1, 1).uniform_(contrast[0], contrast[1])
+                contrast_factor = torch.ones(B, 1, 1, 1, device=img.device).uniform_(contrast[0], contrast[1])
                 img = adjust_contrast(img, contrast_factor)
 
             if self.saturation is not None:
                 saturation = self.saturation
-                saturation_factor = torch.ones(B, 1, 1, 1).uniform_(saturation[0], saturation[1])
+                saturation_factor = torch.ones(B, 1, 1, 1, device=img.device).uniform_(saturation[0], saturation[1])
                 img = adjust_saturation(img, saturation_factor)
 
             if self.hue is not None:
                 hue = self.hue
-                hue_factor = torch.ones(B).uniform_(hue[0], hue[1])
+                hue_factor = torch.ones(B, device=img.device).uniform_(hue[0], hue[1])
                 img = adjust_hue(img, hue_factor)
 
         return img
