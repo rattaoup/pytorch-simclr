@@ -3,19 +3,21 @@ import json
 import torchvision
 import torchvision.transforms as transforms
 
-from augmentation import ColourDistortion
 from dataset import *
 from models import *
 
 
-def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None):
-
+def get_mean_std(dataset):
     CACHED_MEAN_STD = {
         'cifar10': ((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         'cifar100': ((0.5071, 0.4865, 0.4409), (0.2009, 0.1984, 0.2023)),
         'stl10': ((0.4409, 0.4279, 0.3868), (0.2309, 0.2262, 0.2237)),
         'imagenet': ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
     }
+    return CACHED_MEAN_STD[dataset]
+
+
+def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None):
 
     PATHS = {
         'cifar10': '/data/cifar10/',
@@ -43,8 +45,8 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
         transforms.RandomResizedCrop(img_size, interpolation=Image.BICUBIC),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        ColourDistortion(s=0.5),
-        transforms.Normalize(*CACHED_MEAN_STD[dataset]),
+        # ColourDistortion(s=0.5),
+        # transforms.Normalize(*CACHED_MEAN_STD[dataset]),
     ])
 
     if dataset == 'imagenet':
@@ -52,20 +54,20 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
             transforms.Resize(256),
             transforms.CenterCrop(224),
             transforms.ToTensor(),
-            transforms.Normalize(*CACHED_MEAN_STD[dataset]),
+            transforms.Normalize(*get_mean_std(dataset)),
         ])
     else:
         transform_test = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(*CACHED_MEAN_STD[dataset]),
+            transforms.Normalize(*get_mean_std(dataset)),
         ])
 
-    if not augment_clf_train:
+    if augment_clf_train:
         transform_clftrain = transforms.Compose([
             transforms.RandomResizedCrop(img_size, interpolation=Image.BICUBIC),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize(*CACHED_MEAN_STD[dataset]),
+            transforms.Normalize(*get_mean_std(dataset)),
         ])
     else:
         transform_clftrain = transform_test

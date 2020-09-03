@@ -7,10 +7,12 @@ import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
+import torchvision.transforms as transforms
 from torchlars import LARS
 from tqdm import tqdm
 
-from configs import get_datasets
+from augmentation import ColourDistortion
+from configs import get_datasets, get_mean_std
 from critic import LinearCritic
 from evaluate import save_checkpoint, encode_train_set, train_clf, test
 from models import *
@@ -98,6 +100,10 @@ if args.cosine_anneal:
     scheduler = CosineAnnealingWithLinearRampLR(base_optimizer, args.num_epochs)
 encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
 
+batch_transform = transforms.Compose([
+        ColourDistortion(s=0.5),
+        transforms.Normalize(*get_mean_std(args.dataset)),
+    ])
 
 # Training
 def train(epoch):
@@ -108,6 +114,7 @@ def train(epoch):
     t = tqdm(enumerate(trainloader), desc='Loss: **** ', total=len(trainloader), bar_format='{desc}{bar}{r_bar}')
     for batch_idx, (inputs, _, _) in t:
         x1, x2 = inputs
+        x1, x2 = batch_transform(x1), batch_transform(x2)
         x1, x2 = x1.to(device), x2.to(device)
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
