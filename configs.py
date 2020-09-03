@@ -60,7 +60,7 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
             transforms.Normalize(*CACHED_MEAN_STD[dataset]),
         ])
 
-    if augment_clf_train:
+    if not augment_clf_train:
         transform_clftrain = transforms.Compose([
             transforms.RandomResizedCrop(img_size, interpolation=Image.BICUBIC),
             transforms.RandomHorizontalFlip(),
