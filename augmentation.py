@@ -210,7 +210,7 @@ class TensorColorJitter(nn.Module):
         else:
             raise ValueError("Unexpected input shape length")
 
-        return img, brightness_factor, contrast_factor, saturation_factor, hue_factor
+        return img
 
 
 class ImageFilterTransform(object):
