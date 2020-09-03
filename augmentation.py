@@ -22,25 +22,28 @@ def BlurOrSharpen(radius=2.):
 
 def grayscale(img):
     if img.ndims == 3:
-        output = 0.2989 * img[0, ...] + 0.5870 * img[1, ...] + 0.1140 * img[2, ...]
+        output = 0.2990 * img[0, ...] + 0.5870 * img[1, ...] + 0.1140 * img[2, ...]
         return output.unsqueeze(0)
     elif img.ndims == 4:
-        output = 0.2989 * img[:, 0, ...] + 0.5870 * img[:, 1, ...] + 0.1140 * img[:, 2, ...]
+        output = 0.2990 * img[:, 0, ...] + 0.5870 * img[:, 1, ...] + 0.1140 * img[:, 2, ...]
         return output.unsqueeze(1)
     else:
         raise ValueError("Unexpected number of dimensions for grayscale conversion")
 
 
 def adjust_brightness(img, scale):
-    return img * scale
+    y = img * scale
+    return y.clamp(min=0, max=1)
 
 
 def adjust_saturation(img, scale):
-    return img * scale + grayscale(img) * (1 - scale)
+    y = img * scale + grayscale(img) * (1 - scale)
+    return y.clamp(min=0, max=1)
 
 
 def adjust_contrast(img, scale):
-    return img * scale + grayscale(img).mean(dim=[-1, -2], keepdim=True) * (1 - scale)
+    y = img * scale + grayscale(img).mean(dim=[-1, -2], keepdim=True) * (1 - scale)
+    return y.clamp(min=0, max=1)
 
 
 def adjust_hue(img, scale):
