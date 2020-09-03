@@ -9,8 +9,8 @@ from math import pi
 def ColourDistortion(s=1.0):
     # s is the strength of color distortion.
     color_jitter = TensorColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
-    rnd_color_jitter = transforms.RandomApply([color_jitter], p=0.8)
-    rnd_gray = transforms.RandomApply([TensorGrayscale()], p=0.2)
+    rnd_color_jitter = TensorRandomApply([color_jitter], p=0.8)
+    rnd_gray = TensorRandomApply([TensorGrayscale()], p=0.2)
     color_distort = transforms.Compose([rnd_color_jitter, rnd_gray])
     return color_distort
 
@@ -77,6 +77,26 @@ def adjust_hue(img, scale):
         raise ValueError("Unexpected number of dimensions for hue adjustment")
 
 
+class TensorRandomApply(nn.Module):
+
+    def __init__(self, transform_list, p=0.5):
+        super().__init__()
+        self.transform = transforms.Compose(transform_list)
+        self.p = p
+
+    def forward(self, x):
+        if len(x.shape) == 3:
+            if torch.rand() < self.p:
+                return self.transform(x)
+            else:
+                return x
+        elif len(x.shape) == 4:
+            B = x.shape[0]
+            y = self.transform(x)
+            apply_indicator = torch.bernoulli(self.p * torch.ones(B))
+            return y * apply_indicator + (1 - apply_indicator) * x
+
+
 class TensorGrayscale(nn.Module):
 
     def forward(self, x):
@@ -121,26 +141,47 @@ class TensorColorJitter(nn.Module):
         Returns:
             PIL Image or Tensor: Color jittered image.
         """
-        fn_idx = [0, 1, 2, 3]
-        for fn_id in fn_idx:
-            if fn_id == 0 and self.brightness is not None:
+        if len(img.shape) == 3:
+            if self.brightness is not None:
                 brightness = self.brightness
                 brightness_factor = torch.tensor(1.0).uniform_(brightness[0], brightness[1]).item()
                 img = adjust_brightness(img, brightness_factor)
 
-            if fn_id == 1 and self.contrast is not None:
+            if self.contrast is not None:
                 contrast = self.contrast
                 contrast_factor = torch.tensor(1.0).uniform_(contrast[0], contrast[1]).item()
                 img = adjust_contrast(img, contrast_factor)
 
-            if fn_id == 2 and self.saturation is not None:
+            if self.saturation is not None:
                 saturation = self.saturation
                 saturation_factor = torch.tensor(1.0).uniform_(saturation[0], saturation[1]).item()
                 img = adjust_saturation(img, saturation_factor)
 
-            if fn_id == 3 and self.hue is not None:
+            if self.hue is not None:
                 hue = self.hue
                 hue_factor = torch.tensor(1.0).uniform_(hue[0], hue[1]).item()
+                img = adjust_hue(img, hue_factor)
+
+        elif len(img.shape) == 4:
+            B = img.shape[0]
+            if self.brightness is not None:
+                brightness = self.brightness
+                brightness_factor = torch.ones(B, 1, 1, 1).uniform_(brightness[0], brightness[1])
+                img = adjust_brightness(img, brightness_factor)
+
+            if self.contrast is not None:
+                contrast = self.contrast
+                contrast_factor = torch.ones(B, 1, 1, 1).uniform_(contrast[0], contrast[1])
+                img = adjust_contrast(img, contrast_factor)
+
+            if self.saturation is not None:
+                saturation = self.saturation
+                saturation_factor = torch.ones(B, 1, 1, 1).uniform_(saturation[0], saturation[1])
+                img = adjust_saturation(img, saturation_factor)
+
+            if self.hue is not None:
+                hue = self.hue
+                hue_factor = torch.ones(B, 1, 1, 1).uniform_(hue[0], hue[1])
                 img = adjust_hue(img, hue_factor)
 
         return img
