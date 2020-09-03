@@ -62,11 +62,19 @@ def adjust_hue(img, scale):
         T_hue = torch.tensor([1, 0, 0,
                               0, torch.cos(scale), -torch.sin(scale),
                               0, -torch.sin(scale), torch.cos(scale)], device=img.device).reshape(3, 3)
-    else:
-        raise ValueError
+        T_final = torch.matmul(torch.matmul(T_rgb, T_hue), T_yiq)
+        return rmv(T_final, img.transpose(0, -1)).transpose(-1, 0)
 
-    T_final = torch.matmul(torch.matmul(T_rgb, T_hue), T_yiq)
-    return rmv(T_final, img.transpose(0, -1)).transpose(-1, 0)
+    elif len(img.shape) == 4:
+        B = img.shape[0]
+        T_hue = torch.stack([torch.ones(B, device=scale.device), torch.zeros(B, device=scale.device), torch.zeros(B, device=scale.device),
+                             torch.zeros(B, device=scale.device), torch.cos(scale), -torch.sin(scale),
+                             torch.zeros(B, device=scale.device), -torch.sin(scale), torch.cos(scale)], dim=-1).reshape(B, 3, 3)
+        T_final = torch.matmul(torch.matmul(T_rgb, T_hue), T_yiq).unsqueeze(1).unsqueeze(1)
+        return rmv(T_final, img.transpose(1, -1)).transpose(-1, 1)
+
+    else:
+        raise ValueError("Unexpected number of dimensions for hue adjustment")
 
 
 class TensorGrayscale(nn.Module):
