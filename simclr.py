@@ -11,7 +11,7 @@ import torchvision.transforms as transforms
 from torchlars import LARS
 from tqdm import tqdm
 
-from augmentation import ColourDistortion
+from augmentation import ColourDistortion, TensorNormalise
 from configs import get_datasets, get_mean_std
 from critic import LinearCritic
 from evaluate import save_checkpoint, encode_train_set, train_clf, test
@@ -102,7 +102,7 @@ encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
 
 batch_transform = transforms.Compose([
         ColourDistortion(s=0.5),
-        transforms.Normalize(*get_mean_std(args.dataset)),
+        TensorNormalise(*get_mean_std(args.dataset)),
     ])
 
 # Training

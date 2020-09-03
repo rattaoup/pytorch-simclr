@@ -77,6 +77,17 @@ def adjust_hue(img, scale):
         raise ValueError("Unexpected number of dimensions for hue adjustment")
 
 
+class TensorNormalise(nn.Module):
+
+    def __init__(self, mean, std):
+        super().__init__()
+        self.mean = torch.tensor(mean).unsqueeze(-1).unsqueeze(-1)
+        self.std = torch.tensor(std).unsqueeze(-1).unsqueeze(-1)
+
+    def forward(self, x):
+        return (x - self.mean) / self.std
+
+
 class TensorRandomApply(nn.Module):
 
     def __init__(self, transform_list, p=0.5):
@@ -93,7 +104,7 @@ class TensorRandomApply(nn.Module):
         elif len(x.shape) == 4:
             B = x.shape[0]
             y = self.transform(x)
-            apply_indicator = torch.bernoulli(self.p * torch.ones(B))
+            apply_indicator = torch.bernoulli(self.p * torch.ones(B, 1, 1, 1))
             return y * apply_indicator + (1 - apply_indicator) * x
 
 
@@ -181,7 +192,7 @@ class TensorColorJitter(nn.Module):
 
             if self.hue is not None:
                 hue = self.hue
-                hue_factor = torch.ones(B, 1, 1, 1).uniform_(hue[0], hue[1])
+                hue_factor = torch.ones(B).uniform_(hue[0], hue[1])
                 img = adjust_hue(img, hue_factor)
 
         return img
