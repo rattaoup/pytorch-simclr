@@ -15,7 +15,10 @@ from critic import LinearCritic
 from evaluate import save_checkpoint, encode_train_set, train_clf, test
 from models import *
 from scheduler import CosineAnnealingWithLinearRampLR
+from aam_tools import get_datasets_aam, DifferentiableColourDistortionByTorch3
+from torchvision import transforms
 from update_checkpoint import update_checkpoint
+
 
 parser = argparse.ArgumentParser(description='PyTorch Contrastive Learning.')
 parser.add_argument('--base-lr', default=0.25, type=float, help='base learning rate, rescaled by batch_size/256')
@@ -35,6 +38,7 @@ parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit 
                                                               'classifier only training here.')
 parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output file name')
 parser.add_argument("--cut-off", type=int, default=1000, help='cut off epochs')
+
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
@@ -50,7 +54,7 @@ current_checkpoint = {}
 acc = 0
 
 print('==> Preparing data..')
-trainset, testset, clftrainset, num_classes, stem = get_datasets(args.dataset)
+trainset, testset, clftrainset, num_classes, stem = get_datasets_aam(args.dataset)
 
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,
                                           num_workers=args.num_workers, pin_memory=True)
@@ -114,6 +118,9 @@ if args.resume:
 
 
 
+s = 0.5
+aug_by_torch_batch = DifferentiableColourDistortionByTorch3(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+
 # Training
 def train(epoch):
     print('\nEpoch: %d' % epoch)
@@ -124,6 +131,7 @@ def train(epoch):
     for batch_idx, (inputs, _, _) in t:
         x1, x2 = inputs
         x1, x2 = x1.to(device), x2.to(device)
+        x1, x2 = aug_by_torch_batch(x1), aug_by_torch_batch(x2)
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
         raw_scores, pseudotargets = critic(representation1, representation2)
