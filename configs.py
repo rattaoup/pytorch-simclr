@@ -42,8 +42,8 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
     transform_train = transforms.Compose([
         transforms.RandomResizedCrop(img_size, interpolation=Image.BICUBIC),
         transforms.RandomHorizontalFlip(),
-        ColourDistortion(s=0.5),
         transforms.ToTensor(),
+        ColourDistortion(s=0.5),
         transforms.Normalize(*CACHED_MEAN_STD[dataset]),
     ])
 
