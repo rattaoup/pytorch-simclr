@@ -11,7 +11,7 @@ def ColourDistortion(s=1.0):
     color_jitter = TensorColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
     rnd_color_jitter = TensorRandomApply([color_jitter], p=0.8)
     rnd_gray = TensorRandomApply([TensorGrayscale()], p=0.2)
-    color_distort = transforms.Compose([rnd_color_jitter, rnd_gray])
+    color_distort = ModuleCompose([rnd_color_jitter, rnd_gray])
     return color_distort
 
 
