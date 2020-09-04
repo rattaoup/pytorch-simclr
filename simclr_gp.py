@@ -17,6 +17,8 @@ from models import *
 from scheduler import CosineAnnealingWithLinearRampLR
 from aam_tools import get_datasets_aam, DifferentiableColourDistortionByTorch3
 from torchvision import transforms
+from gp_tools import gen_lambda, DifferentiableColourDistortionByTorch_manual
+import torch.autograd as autograd
 from update_checkpoint import update_checkpoint
 
 
@@ -37,8 +39,9 @@ parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit 
                                                               'Not appropriate for large datasets. Set 0 to avoid '
                                                               'classifier only training here.')
 parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output file name')
+parser.add_argument("--norm", type=float, default=2, help='Norm for gradient penalty')
+parser.add_argument("--lambda-gp", type=float, default=0.001, help='lambda_gp for gradient penalty')
 parser.add_argument("--cut-off", type=int, default=1000, help='cut off epochs')
-
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
@@ -112,14 +115,19 @@ if args.resume:
     if 'num_epochs' in checkpoint:
         last_epoch = checkpoint['num_epochs']
     else:
-        last_epoch = 1000
+        last_epoch = 1000 #default value for num epochs = 1000
     current_checkpoint = checkpoint
 
 
 
 
+
+# Augmentation setup
 s = 0.5
-aug_by_torch_batch = DifferentiableColourDistortionByTorch3(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+brightness_bound = [1-0.8*s, 1+0.8*s]
+contrast_bound = [1-0.8*s, 1+0.8*s]
+saturation_bound = [1-0.8*s, 1+0.8*s]
+hue_bound = [-0.2*s, 0.2*s]
 
 # Training
 def train(epoch):
@@ -127,34 +135,76 @@ def train(epoch):
     net.train()
     critic.train()
     train_loss = 0
+    sum_gradient = 0
+    contrastive_loss = 0
     t = tqdm(enumerate(trainloader), desc='Loss: **** ', total=len(trainloader), bar_format='{desc}{bar}{r_bar}')
     for batch_idx, (inputs, _, _) in t:
         x1, x2 = inputs
         x1, x2 = x1.to(device), x2.to(device)
-        x1, x2 = aug_by_torch_batch(x1), aug_by_torch_batch(x2)
+
+        #### Differentiable Colour Augmentation
+        B = x1.size()[0]
+
+        brightness_list1, saturation_list1, contrast_list1, hue_list1 = gen_lambda(B, brightness_bound,
+                                                                                   contrast_bound,
+                                                                                   saturation_bound,
+                                                                                   hue_bound)
+        brightness_list2, saturation_list2, contrast_list2, hue_list2 = gen_lambda(B, brightness_bound,
+                                                                                   contrast_bound,
+                                                                                   saturation_bound,
+                                                                                   hue_bound)
+        lambda_ = torch.stack([brightness_list1, saturation_list1, contrast_list1, hue_list1,
+                               brightness_list2, saturation_list2, contrast_list2, hue_list2], dim=1)
+        aug_manual1 = DifferentiableColourDistortionByTorch_manual(brightness = lambda_[:,0],
+                                                                   contrast = lambda_[:,1],
+                                                                   saturation = lambda_[:,2],
+                                                                   hue = lambda_[:,3])
+        aug_manual2 = DifferentiableColourDistortionByTorch_manual(brightness = lambda_[:,4],
+                                                                   contrast = lambda_[:,5],
+                                                                   saturation = lambda_[:,6],
+                                                                   hue = lambda_[:,7])
+        x1, x2 = aug_manual1(x1), aug_manual2(x2)
+        #####
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
         raw_scores, pseudotargets = critic(representation1, representation2)
         loss = criterion(raw_scores, pseudotargets)
-        loss.backward()
+
+        ##### Gradient Penalty
+        sum_rep1 = representation1.sum()
+        sum_rep2 = representation2.sum()
+        sum_rep = sum_rep1 + sum_rep2
+        gradient_lambda =  autograd.grad(outputs = sum_rep,
+                             inputs = lambda_,
+                             create_graph = True,
+                             retain_graph = True,
+                             only_inputs = True)[0]
+        gradient_penalty = (gradient_lambda +1e-16).norm(p=args.norm, dim=1).mean()
+        loss_gp = loss + args.lambda_gp * gradient_penalty.to(device)
+        loss_gp.backward()
         encoder_optimizer.step()
 
-        train_loss += loss.item()
+        train_loss += loss_gp.item()
+        sum_gradient += gradient_penalty
+        contrastive_loss += loss
 
-        t.set_description('Loss: %.3f ' % (train_loss / (batch_idx + 1)))
-    return (train_loss / (batch_idx + 1))
+        t.set_description('gp: {:0.5f} ,  loss: {:0.4f},  final_loss: {:0.4f}'.format((sum_gradient / (batch_idx + 1)), (contrastive_loss / (batch_idx + 1)), (train_loss / (batch_idx + 1))))
+
+    return (sum_gradient / (batch_idx + 1)), (contrastive_loss / (batch_idx + 1)), (train_loss / (batch_idx + 1))
 
 
-for epoch in range(start_epoch, min(last_epoch,args.cut_off)):
-    final_loss = train(epoch)
+
+
+for epoch in range(start_epoch, start_epoch + args.num_epochs):
+    gradient_penalty, contrastive_loss, final_loss = train(epoch)
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
         X, y = encode_train_set(clftrainloader, device, net)
         clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=1e-5)
         acc = test(testloader, device, net, clf)
         if acc > best_acc:
             best_acc = acc
-        current_checkpoint = update_checkpoint(current_checkpoint, net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs, 1, 1, final_loss, acc)
+        current_checkpoint = update_checkpoint(current_checkpoint, net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs, gradient_penalty, contrastive_loss, final_loss, acc)
     elif args.test_freq == 0:
-        current_checkpoint = update_checkpoint(current_checkpoint, net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs, 1, 1, final_loss, acc)
+        current_checkpoint = update_checkpoint(current_checkpoint, net, clf, critic, epoch, args, os.path.basename(__file__), base_optimizer, encoder_optimizer, args.num_epochs, gradient_penalty, contrastive_loss, final_loss, acc)
     if args.cosine_anneal:
         scheduler.step()
