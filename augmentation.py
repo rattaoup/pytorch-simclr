@@ -1,6 +1,5 @@
 import numbers
 from PIL import ImageFilter
-from torchvision import transforms
 import torch
 from torch import nn
 from math import pi
@@ -85,7 +84,9 @@ class ModuleCompose(nn.Module):
         self.transforms = nn.ModuleList(transform_list)
 
     def forward(self, x, *args):
+        print('Inside module compose')
         for transform in self.transforms:
+            print(transform.__class__)
             x = transform(x, *args)
         return x
 
@@ -97,7 +98,7 @@ class TensorNormalise(nn.Module):
         self.register_buffer('mean', torch.tensor(mean).unsqueeze(-1).unsqueeze(-1))
         self.register_buffer('std', torch.tensor(std).unsqueeze(-1).unsqueeze(-1))
 
-    def forward(self, x):
+    def forward(self, x, *args):
         return (x - self.mean) / self.std
 
 
@@ -105,10 +106,11 @@ class TensorRandomApply(nn.Module):
 
     def __init__(self, transform_list, p=0.5):
         super().__init__()
-        self.transform = transforms.Compose(transform_list)
+        self.transform = ModuleCompose(transform_list)
         self.p = p
 
     def forward(self, x, *args):
+        print('inside random apply')
         if len(x.shape) == 3:
             if torch.rand() < self.p:
                 return self.transform(x, *args)
@@ -116,6 +118,7 @@ class TensorRandomApply(nn.Module):
                 return x
         elif len(x.shape) == 4:
             B = x.shape[0]
+            print(self.transform.__class__)
             y = self.transform(x, *args)
             apply_indicator = torch.bernoulli(self.p * torch.ones(B, 1, 1, 1, device=x.device))
             return y * apply_indicator + (1 - apply_indicator) * x
@@ -123,7 +126,7 @@ class TensorRandomApply(nn.Module):
 
 class TensorGrayscale(nn.Module):
 
-    def forward(self, x):
+    def forward(self, x, *args):
         shape = x.shape
         return grayscale(x).expand(shape)
 
@@ -222,9 +225,11 @@ class TensorColorJitter(nn.Module):
         Returns:
             PIL Image or Tensor: Color jittered image.
         """
-        img = adjust_brightness(img, brightness_factor)
-        img = adjust_contrast(img, contrast_factor)
-        img = adjust_saturation(img, saturation_factor)
+        print(img.shape, brightness_factor.shape)
+        B = img.shape[0]
+        img = adjust_brightness(img, brightness_factor.reshape(B, 1, 1, 1))
+        img = adjust_contrast(img, contrast_factor.reshape(B, 1, 1, 1))
+        img = adjust_saturation(img, saturation_factor.reshape(B, 1, 1, 1))
         img = adjust_hue(img, hue_factor)
 
         return img

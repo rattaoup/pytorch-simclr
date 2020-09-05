@@ -100,6 +100,7 @@ if args.cosine_anneal:
 encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
 
 col_distort = ColourDistortion(s=0.5)
+print(col_distort.__class__)
 batch_transform = ModuleCompose([
         col_distort,
         TensorNormalise(*get_mean_std(args.dataset))
