@@ -7,6 +7,7 @@ import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
+import torch.autograd as autograd
 from torchlars import LARS
 from tqdm import tqdm
 
@@ -99,12 +100,11 @@ if args.cosine_anneal:
     scheduler = CosineAnnealingWithLinearRampLR(base_optimizer, args.num_epochs)
 encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
 
+col_distort = ColourDistortion(s=0.5)
 batch_transform = ModuleCompose([
-        ColourDistortion(s=0.5),
+        col_distort,
         TensorNormalise(*get_mean_std(args.dataset))
     ]).to(device)
-# if device == 'cuda':
-#     batch_transform = torch.nn.DataParallel(batch_transform)
 
 
 # Training
@@ -117,7 +117,8 @@ def train(epoch):
     for batch_idx, (inputs, _, _) in t:
         x1, x2 = inputs
         x1, x2 = x1.to(device), x2.to(device)
-        x1, x2 = batch_transform(x1), batch_transform(x2)
+        rn1, rn2 = col_distort.sample_random_numbers(x1.shape, x1.device), col_distort.sample_random_numbers(x2.shape, x2.device)
+        x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2)
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
         raw_scores, pseudotargets = critic(representation1, representation2)
