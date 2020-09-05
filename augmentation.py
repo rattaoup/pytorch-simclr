@@ -84,9 +84,7 @@ class ModuleCompose(nn.Module):
         self.transforms = nn.ModuleList(transform_list)
 
     def forward(self, x, *args):
-        print('Inside module compose')
         for transform in self.transforms:
-            print(transform.__class__)
             x = transform(x, *args)
         return x
 
@@ -110,7 +108,6 @@ class TensorRandomApply(nn.Module):
         self.p = p
 
     def forward(self, x, *args):
-        print('inside random apply')
         if len(x.shape) == 3:
             if torch.rand() < self.p:
                 return self.transform(x, *args)
@@ -118,7 +115,6 @@ class TensorRandomApply(nn.Module):
                 return x
         elif len(x.shape) == 4:
             B = x.shape[0]
-            print(self.transform.__class__)
             y = self.transform(x, *args)
             apply_indicator = torch.bernoulli(self.p * torch.ones(B, 1, 1, 1, device=x.device))
             return y * apply_indicator + (1 - apply_indicator) * x
@@ -164,25 +160,25 @@ class TensorColorJitter(nn.Module):
         if len(shape) == 3:
             if self.brightness is not None:
                 brightness = self.brightness
-                brightness_factor = torch.tensor(1.0).uniform_(brightness[0], brightness[1]).requires_grad_(True)
+                brightness_factor = torch.tensor(1.0).uniform_(brightness[0], brightness[1])
             else:
                 brightness_factor = None
 
             if self.contrast is not None:
                 contrast = self.contrast
-                contrast_factor = torch.tensor(1.0).uniform_(contrast[0], contrast[1]).requires_grad_(True)
+                contrast_factor = torch.tensor(1.0).uniform_(contrast[0], contrast[1])
             else:
                 contrast_factor = None
 
             if self.saturation is not None:
                 saturation = self.saturation
-                saturation_factor = torch.tensor(1.0).uniform_(saturation[0], saturation[1]).requires_grad_(True)
+                saturation_factor = torch.tensor(1.0).uniform_(saturation[0], saturation[1])
             else:
                 saturation_factor = None
 
             if self.hue is not None:
                 hue = self.hue
-                hue_factor = torch.tensor(1.0).uniform_(hue[0], hue[1]).requires_grad_(True)
+                hue_factor = torch.tensor(1.0).uniform_(hue[0], hue[1])
             else:
                 hue_factor = None
 
@@ -190,34 +186,36 @@ class TensorColorJitter(nn.Module):
             B = shape[0]
             if self.brightness is not None:
                 brightness = self.brightness
-                brightness_factor = torch.ones(B, device=device).uniform_(brightness[0], brightness[1]).requires_grad_(True)
+                brightness_factor = torch.ones(B, device=device).uniform_(brightness[0], brightness[1])
             else:
                 brightness_factor = None
 
             if self.contrast is not None:
                 contrast = self.contrast
-                contrast_factor = torch.ones(B, device=device).uniform_(contrast[0], contrast[1]).requires_grad_(True)
+                contrast_factor = torch.ones(B, device=device).uniform_(contrast[0], contrast[1])
             else:
                 contrast_factor = None
 
             if self.saturation is not None:
                 saturation = self.saturation
-                saturation_factor = torch.ones(B, device=device).uniform_(saturation[0], saturation[1]).requires_grad_(True)
+                saturation_factor = torch.ones(B, device=device).uniform_(saturation[0], saturation[1])
             else:
                 saturation_factor = None
 
             if self.hue is not None:
                 hue = self.hue
-                hue_factor = torch.ones(B, device=device).uniform_(hue[0], hue[1]).requires_grad_(True)
+                hue_factor = torch.ones(B, device=device).uniform_(hue[0], hue[1])
             else:
                 hue_factor = None
 
         else:
             raise ValueError("Unexpected input shape length")
 
-        return brightness_factor, contrast_factor, saturation_factor, hue_factor
+        aug_parameters = torch.stack([brightness_factor, contrast_factor, saturation_factor, hue_factor], dim=-1).requires_grad_(True)
 
-    def forward(self, img, brightness_factor, contrast_factor, saturation_factor, hue_factor):
+        return aug_parameters
+
+    def forward(self, img, aug_parameters):
         """
         Args:
             img (PIL Image or Tensor): Input image.
@@ -225,12 +223,11 @@ class TensorColorJitter(nn.Module):
         Returns:
             PIL Image or Tensor: Color jittered image.
         """
-        print(img.shape, brightness_factor.shape)
         B = img.shape[0]
-        img = adjust_brightness(img, brightness_factor.reshape(B, 1, 1, 1))
-        img = adjust_contrast(img, contrast_factor.reshape(B, 1, 1, 1))
-        img = adjust_saturation(img, saturation_factor.reshape(B, 1, 1, 1))
-        img = adjust_hue(img, hue_factor)
+        img = adjust_brightness(img, aug_parameters[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1))
+        img = adjust_contrast(img,  aug_parameters[:, 1].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1))
+        img = adjust_saturation(img,  aug_parameters[:, 2].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1))
+        img = adjust_hue(img,  aug_parameters[:, 3])
 
         return img
 

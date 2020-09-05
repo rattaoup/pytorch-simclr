@@ -7,6 +7,7 @@ import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
+import torch.autograd as autograd
 from torchlars import LARS
 from tqdm import tqdm
 
@@ -24,6 +25,7 @@ parser.add_argument('--resume', '-r', type=str, default='', help='resume from ch
 parser.add_argument('--dataset', '-d', type=str, default='cifar10', help='dataset',
                     choices=['cifar10', 'cifar100', 'stl10', 'imagenet'])
 parser.add_argument('--temperature', type=float, default=0.5, help='InfoNCE temperature')
+parser.add_argument('--lambda-gp', type=float, default=0., help='Gradient penalty')
 parser.add_argument("--batch-size", type=int, default=512, help='Training batch size')
 parser.add_argument("--num-epochs", type=int, default=100, help='Number of training epochs')
 parser.add_argument("--cosine-anneal", action='store_true', help="Use cosine annealing on the learning rate")
@@ -120,12 +122,23 @@ def train(epoch):
         x1, x2 = inputs
         x1, x2 = x1.to(device), x2.to(device)
         rn1, rn2 = col_distort.sample_random_numbers(x1.shape, x1.device), col_distort.sample_random_numbers(x2.shape, x2.device)
-        x1, x2 = batch_transform(x1, *rn1), batch_transform(x2, *rn2)
+        x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2)
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
         raw_scores, pseudotargets = critic(representation1, representation2)
         loss = criterion(raw_scores, pseudotargets)
-        loss.backward()
+
+        ##### Gradient Penalty
+        sum_rep1 = representation1.sum()
+        gradient_lambda = autograd.grad(outputs=sum_rep1,
+                                        inputs=rn1,
+                                        create_graph=True,
+                                        retain_graph=True,
+                                        only_inputs=True)[0]
+        gradient_penalty = gradient_lambda.pow(2).sum(-1).mean()
+        loss_gp = loss + args.lambda_gp * gradient_penalty.to(device)
+
+        loss_gp.backward()
         encoder_optimizer.step()
 
         train_loss += loss.item()
