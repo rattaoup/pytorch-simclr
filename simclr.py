@@ -117,7 +117,7 @@ def train(epoch):
     for batch_idx, (inputs, _, _) in t:
         x1, x2 = inputs
         x1, x2 = x1.to(device), x2.to(device)
-        x1, x2= batch_transform(x1), batch_transform(x2)
+        x1, x2 = batch_transform(x1), batch_transform(x2)
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
         raw_scores, pseudotargets = critic(representation1, representation2)
