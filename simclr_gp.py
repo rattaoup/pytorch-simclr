@@ -195,7 +195,7 @@ def train(epoch):
 
 
 
-for epoch in range(start_epoch, start_epoch + args.num_epochs):
+for epoch in range(start_epoch, min(last_epoch,args.cut_off)):
     gradient_penalty, contrastive_loss, final_loss = train(epoch)
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
         X, y = encode_train_set(clftrainloader, device, net)

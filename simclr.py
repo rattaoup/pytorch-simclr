@@ -101,7 +101,7 @@ if args.resume:
     net.load_state_dict(checkpoint['net'])
     critic.load_state_dict(checkpoint['critic'])
     best_acc = checkpoint['acc']
-    start_epoch = checkpoint['epoch'] + 1
+#     start_epoch = checkpoint['epoch'] + 1
     encoder_optimizer.load_state_dict(checkpoint['encoder_optim'])
     base_optimizer.load_state_dict(checkpoint['base_optim'])
     scheduler.step(start_epoch)
