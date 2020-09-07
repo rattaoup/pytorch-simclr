@@ -36,6 +36,7 @@ parser.add_argument("--num-workers", type=int, default=2, help='Number of thread
 parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit a linear clf with L-BFGS for testing'
                                                               'Not appropriate for large datasets. Set 0 to avoid '
                                                               'classifier only training here.')
+parser.add_argument("--save-freq", type=int, default=100, help='Frequency to save checkpoints.')
 parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output file name')
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
@@ -170,8 +171,7 @@ for epoch in range(start_epoch, start_epoch + args.num_epochs):
         clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=1e-5)
         acc, test_loss = test(testloader, device, net, clf)
         update_results(*outputs, test_loss, acc)
-        save_checkpoint(net, clf, critic, epoch, args, os.path.basename(__file__), results)
-    elif args.test_freq == 0:
+    if (epoch % args.save_freq == (args.save_freq - 1)):
         save_checkpoint(net, clf, critic, epoch, args, os.path.basename(__file__), results)
     if args.cosine_anneal:
         scheduler.step()
