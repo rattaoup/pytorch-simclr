@@ -131,14 +131,14 @@ def train(epoch):
 
         # Gradient Penalty
         # Sum over both dimensions to give a scalar loss
-        projection_h1 = ((torch.rand(*representation1.shape) * 2 - 1) * representation1).sum()
+        projection_h1 = ((torch.rand(*representation1.shape, device=device) * 2 - 1) * representation1).sum()
         gradient_lambda = autograd.grad(outputs=projection_h1,
                                         inputs=rn1,
                                         create_graph=True,
                                         retain_graph=True,
                                         only_inputs=True)[0]
         # Use the standard gradient approximation net(rn2) - net(rn1) \approx (rn2 - rn1)net'(rn1)
-        gradient_penalty = (gradient_lambda * (rn2 - rn1)).sum(-1).pow(2).mean().to(device)
+        gradient_penalty = (gradient_lambda * (rn2 - rn1)).sum(-1).pow(2).mean().clamp(max=100).to(device)
         loss_gp = contrastive_loss + args.lambda_gp * gradient_penalty
 
         loss_gp.backward()
@@ -148,9 +148,9 @@ def train(epoch):
         train_gradient_penalty += gradient_penalty.item()
         train_total_loss += loss_gp.item()
 
-        t.set_description('C. Loss: %.3f Penalty: %3f Loss: %3f' % (train_contrastive_loss / (batch_idx + 1),
-                                                                    train_gradient_penalty / (batch_idx + 1),
-                                                                    train_total_loss / (batch_idx + 1)))
+        t.set_description('C. Loss: %.3f Penalty: %.3f Loss: %.3f' % (train_contrastive_loss / (batch_idx + 1),
+                                                                      train_gradient_penalty / (batch_idx + 1),
+                                                                      train_total_loss / (batch_idx + 1)))
 
     return train_contrastive_loss / len(trainloader), train_gradient_penalty / len(trainloader), \
            train_total_loss / len(trainloader)

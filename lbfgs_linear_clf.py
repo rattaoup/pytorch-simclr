@@ -64,6 +64,6 @@ X, y = encode_train_set(clftrainloader, device, net)
 for reg_weight in torch.exp(math.log(10) * torch.linspace(-7, -3, 16, dtype=torch.float, device=device)):
     clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=reg_weight)
     acc = test(testloader, device, net, clf)
-    if acc > best_acc:
-        best_acc = acc
+    #if acc > best_acc:
+    #    best_acc = acc
 print("Best test accuracy", best_acc, "%")
