@@ -3,7 +3,7 @@ import os
 import torch
 
 
-def save_checkpoint(net, clf, critic, epoch, args, script_name):
+def save_checkpoint(net, clf, critic, epoch, args, script_name, results):
     # Save checkpoint.
     print('Saving..')
     state = {
@@ -12,9 +12,10 @@ def save_checkpoint(net, clf, critic, epoch, args, script_name):
         'critic': critic.state_dict(),
         'epoch': epoch,
         'args': vars(args),
-        'script': script_name
+        'script': script_name,
+        'results': results
     }
     if not os.path.isdir('checkpoint'):
         os.mkdir('checkpoint')
-    destination = os.path.join('./checkpoint', args.filename)
+    destination = os.path.join('./checkpoint', args.filename + '_epoch{:03d}.pth'.format(epoch))
     torch.save(state, destination)

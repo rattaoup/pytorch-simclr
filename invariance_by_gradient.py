@@ -2,6 +2,7 @@
 import argparse
 import os
 import subprocess
+from collections import defaultdict
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -43,7 +44,7 @@ args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
 args.git_diff = subprocess.check_output(['git', 'diff'])
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-best_acc = 0  # best test accuracy
+results = defaultdict(list)
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 clf = None
 
@@ -91,7 +92,7 @@ if args.resume:
     checkpoint = torch.load(resume_from)
     net.load_state_dict(checkpoint['net'])
     critic.load_state_dict(checkpoint['critic'])
-    best_acc = checkpoint['acc']
+    results = checkpoint['results']
     start_epoch = checkpoint['epoch']
 
 criterion = nn.CrossEntropyLoss()
@@ -113,7 +114,9 @@ def train(epoch):
     print('\nEpoch: %d' % epoch)
     net.train()
     critic.train()
-    train_loss = 0
+    train_contrastive_loss = 0
+    train_gradient_penalty = 0
+    train_total_loss = 0
     t = tqdm(enumerate(trainloader), desc='Loss: **** ', total=len(trainloader), bar_format='{desc}{bar}{r_bar}')
     for batch_idx, (inputs, _, _) in t:
         x1, x2 = inputs
@@ -123,36 +126,52 @@ def train(epoch):
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
         raw_scores, pseudotargets = critic(representation1, representation2)
-        loss = criterion(raw_scores, pseudotargets)
+        contrastive_loss = criterion(raw_scores, pseudotargets)
 
-        ##### Gradient Penalty
-        sum_rep1 = representation1.sum()
-        gradient_lambda = autograd.grad(outputs=sum_rep1,
+        # Gradient Penalty
+        # Sum over both dimensions to give a scalar loss
+        projection_h1 = ((torch.rand(*representation1.shape) * 2 - 1) * representation1).sum()
+        gradient_lambda = autograd.grad(outputs=projection_h1,
                                         inputs=rn1,
                                         create_graph=True,
                                         retain_graph=True,
                                         only_inputs=True)[0]
-        gradient_penalty = gradient_lambda.pow(2).sum(-1).mean()
-        loss_gp = loss + args.lambda_gp * gradient_penalty.to(device)
+        # Use the standard gradient approximation net(rn2) - net(rn1) \approx (rn2 - rn1)net'(rn1)
+        gradient_penalty = (gradient_lambda * (rn2 - rn1)).sum(-1).pow(2).mean().to(device)
+        loss_gp = contrastive_loss + args.lambda_gp * gradient_penalty
 
         loss_gp.backward()
         encoder_optimizer.step()
 
-        train_loss += loss.item()
+        train_contrastive_loss += contrastive_loss.item()
+        train_gradient_penalty += gradient_penalty.item()
+        train_total_loss += loss_gp.item()
 
-        t.set_description('Loss: %.3f ' % (train_loss / (batch_idx + 1)))
+        t.set_description('C. Loss: %.3f Penalty: %3f Loss: %3f' % (train_contrastive_loss / (batch_idx + 1),
+                                                                    train_gradient_penalty / (batch_idx + 1),
+                                                                    train_total_loss / (batch_idx + 1)))
+
+    return train_contrastive_loss / len(trainloader), train_gradient_penalty / len(trainloader), \
+           train_total_loss / len(trainloader)
+
+
+def update_results(train_contrastive_loss, train_gradient_penalty, train_total_loss, test_loss, test_acc):
+    results['train_contrastive_loss'].append(train_contrastive_loss)
+    results['train_gradient_penalty'].append(train_gradient_penalty)
+    results['train_total_loss'].append(train_total_loss)
+    results['test_loss'].append(test_loss)
+    results['test_acc'].append(test_acc)
 
 
 for epoch in range(start_epoch, start_epoch + args.num_epochs):
-    train(epoch)
+    outputs = train(epoch)
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
         X, y = encode_train_set(clftrainloader, device, net)
         clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=1e-5)
-        acc = test(testloader, device, net, clf)
-        if acc > best_acc:
-            best_acc = acc
-        save_checkpoint(net, clf, critic, epoch, args, os.path.basename(__file__))
+        acc, test_loss = test(testloader, device, net, clf)
+        update_results(*outputs, test_loss, acc)
+        save_checkpoint(net, clf, critic, epoch, args, os.path.basename(__file__), results)
     elif args.test_freq == 0:
-        save_checkpoint(net, clf, critic, epoch, args, os.path.basename(__file__))
+        save_checkpoint(net, clf, critic, epoch, args, os.path.basename(__file__), results)
     if args.cosine_anneal:
         scheduler.step()

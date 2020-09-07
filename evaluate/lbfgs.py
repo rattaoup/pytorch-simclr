@@ -80,4 +80,4 @@ def test(testloader, device, net, clf):
             t.set_description('Loss: %.3f | Test Acc: %.3f%% ' % (test_clf_loss / (batch_idx + 1), 100. * correct / total))
 
     acc = 100. * correct / total
-    return acc
+    return acc, test_clf_loss / len(testloader)
