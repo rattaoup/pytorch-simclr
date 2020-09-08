@@ -138,7 +138,7 @@ def train(epoch):
                                         retain_graph=True,
                                         only_inputs=True)[0]
         # Use the standard gradient approximation net(rn2) - net(rn1) \approx (rn2 - rn1)net'(rn1)
-        gradient_penalty = (gradient_lambda * (rn2 - rn1)).sum(-1).pow(2).mean().clamp(max=100).to(device)
+        gradient_penalty = (gradient_lambda * (rn2 - rn1)).sum(-1).pow(2).mean().clamp(max=10).to(device)
         loss_gp = contrastive_loss + args.lambda_gp * gradient_penalty
 
         loss_gp.backward()
