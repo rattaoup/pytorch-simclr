@@ -86,14 +86,6 @@ if device == 'cuda':
     net.representation_dim = repr_dim
     cudnn.benchmark = True
 
-
-criterion = nn.CrossEntropyLoss()
-base_optimizer = optim.SGD(list(net.parameters()) + list(critic.parameters()), lr=args.lr, weight_decay=1e-6,
-                           momentum=args.momentum)
-if args.cosine_anneal:
-    scheduler = CosineAnnealingWithLinearRampLR(base_optimizer, args.num_epochs)
-encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
-
 if args.resume:
     # Load checkpoint.
     print('==> Resuming from checkpoint..')
@@ -103,10 +95,14 @@ if args.resume:
     net.load_state_dict(checkpoint['net'])
     critic.load_state_dict(checkpoint['critic'])
     results = checkpoint['results']
-    start_epoch = checkpoint['epoch']+1
-    scheduler.step(start_epoch)
+    start_epoch = checkpoint['epoch']
 
-
+criterion = nn.CrossEntropyLoss()
+base_optimizer = optim.SGD(list(net.parameters()) + list(critic.parameters()), lr=args.lr, weight_decay=1e-6,
+                           momentum=args.momentum)
+if args.cosine_anneal:
+    scheduler = CosineAnnealingWithLinearRampLR(base_optimizer, args.num_epochs)
+encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
 
 col_distort = ColourDistortion(s=0.5)
 batch_transform = ModuleCompose([
@@ -136,6 +132,7 @@ def train(epoch):
 
         # Gradient Penalty
         # Sum over both dimensions to give a scalar loss
+        representation1 = representation1/representation1.norm(p=2, dim=-1, keepdim=True)
         projection_h1 = ((torch.rand(*representation1.shape, device=device) * 2 - 1) * representation1).sum()
         gradient_lambda = autograd.grad(outputs=projection_h1,
                                         inputs=rn1,

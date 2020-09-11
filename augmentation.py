@@ -7,7 +7,9 @@ from math import pi
 
 def ColourDistortion(s=1.0):
     # s is the strength of color distortion.
+#     color_jitter = TensorColorJitter(1.0*s, 1.0*s, 1.0*s, 0.3*s)
     color_jitter = TensorColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+#     color_jitter = TensorColorJitter(0.9*s, 0.9*s, 0.9*s, 0.2*s)
     rnd_color_jitter = TensorRandomApply([color_jitter], p=0.8)
     rnd_gray = TensorRandomApply([TensorGrayscale()], p=0.2)
     color_distort = ModuleCompose([rnd_color_jitter, rnd_gray])
