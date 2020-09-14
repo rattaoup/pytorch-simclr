@@ -41,8 +41,8 @@ parser.add_argument("--cut-off", type=int, default=1000, help='last epoch')
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
-# args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-# args.git_diff = subprocess.check_output(['git', 'diff'])
+args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+args.git_diff = subprocess.check_output(['git', 'diff'])
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 results = defaultdict(list)

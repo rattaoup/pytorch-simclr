@@ -42,7 +42,7 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
         img_size = 32
 
     transform_train = transforms.Compose([
-        transforms.RandomResizedCrop(img_size, interpolation=Image.BICUBIC),
+        transforms.RandomResizedCrop(img_size, interpolation=Image.LANCZOS),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         # ColourDistortion(s=0.5),
@@ -64,7 +64,7 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
 
     if augment_clf_train:
         transform_clftrain = transforms.Compose([
-            transforms.RandomResizedCrop(img_size, interpolation=Image.BICUBIC),
+            transforms.RandomResizedCrop(img_size, interpolation=Image.LANCZOS),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize(*get_mean_std(dataset)),

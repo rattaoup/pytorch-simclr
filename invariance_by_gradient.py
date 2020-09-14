@@ -42,8 +42,8 @@ parser.add_argument("--cut-off", type=int, default=1000, help='last epoch')
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
-# args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-# args.git_diff = subprocess.check_output(['git', 'diff'])
+args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+args.git_diff = subprocess.check_output(['git', 'diff'])
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 results = defaultdict(list)
@@ -128,6 +128,7 @@ def train(epoch):
         x1, x2 = inputs
         x1, x2 = x1.to(device), x2.to(device)
         rn1, rn2 = col_distort.sample_random_numbers(x1.shape, x1.device), col_distort.sample_random_numbers(x2.shape, x2.device)
+        rn_extra = col_distort.sample_random_numbers((100,) + x1.shape, x1.device)
         x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2)
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
@@ -143,7 +144,7 @@ def train(epoch):
                                         retain_graph=True,
                                         only_inputs=True)[0]
         # Use the standard gradient approximation net(rn2) - net(rn1) \approx (rn2 - rn1)net'(rn1)
-        gradient_penalty = (gradient_lambda * (rn2 - rn1)).sum(-1).pow(2).mean().clamp(max=10).to(device)
+        gradient_penalty = (gradient_lambda * (rn_extra - rn1)).sum(-1).pow(2).mean().clamp(max=10).to(device)
         loss_gp = contrastive_loss + args.lambda_gp * gradient_penalty
 
         loss_gp.backward()
