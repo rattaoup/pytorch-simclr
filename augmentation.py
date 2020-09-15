@@ -226,10 +226,18 @@ class TensorColorJitter(nn.Module):
             PIL Image or Tensor: Color jittered image.
         """
         B = img.shape[0]
-        img = adjust_brightness(img, aug_parameters[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1))
-        img = adjust_contrast(img,  aug_parameters[:, 1].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1))
-        img = adjust_saturation(img,  aug_parameters[:, 2].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1))
-        img = adjust_hue(img,  aug_parameters[:, 3])
+        order = torch.randperm(4)
+        for i in order:
+            if i == 0:
+                img = adjust_brightness(img, aug_parameters[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1))
+            elif i == 1:
+                img = adjust_contrast(img,  aug_parameters[:, 1].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1))
+            elif i == 2:
+                img = adjust_saturation(img,  aug_parameters[:, 2].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1))
+            elif i == 3:
+                img = adjust_hue(img,  aug_parameters[:, 3])
+            else:
+                raise ValueError
 
         return img
 
