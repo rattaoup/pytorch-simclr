@@ -226,7 +226,7 @@ class TensorColorJitter(nn.Module):
             PIL Image or Tensor: Color jittered image.
         """
         B = img.shape[0]
-        order = torch.randperm(4)
+        order = [0, 1, 2, 3]
         for i in order:
             if i == 0:
                 img = adjust_brightness(img, aug_parameters[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1))
