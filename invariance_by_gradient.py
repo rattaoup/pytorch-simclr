@@ -128,7 +128,8 @@ def train(epoch):
         x1, x2 = inputs
         x1, x2 = x1.to(device), x2.to(device)
         rn1, rn2 = col_distort.sample_random_numbers(x1.shape, x1.device), col_distort.sample_random_numbers(x2.shape, x2.device)
-        rn_extra = col_distort.sample_random_numbers((100,) + x1.shape, x1.device)
+        shape = (x1.shape[0]*100, *x1.shape[1:])
+        rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 4))
         x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2)
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
@@ -137,14 +138,14 @@ def train(epoch):
 
         # Gradient Penalty
         # Sum over both dimensions to give a scalar loss
-        projection_h1 = ((torch.rand(*representation1.shape, device=device) * 2 - 1) * representation1).sum()
+        projection_h1 = ((torch.bernoulli(.5 * torch.ones(*representation1.shape, device=device)) * 2 - 1) * representation1 ).sum()
         gradient_lambda = autograd.grad(outputs=projection_h1,
                                         inputs=rn1,
                                         create_graph=True,
                                         retain_graph=True,
                                         only_inputs=True)[0]
         # Use the standard gradient approximation net(rn2) - net(rn1) \approx (rn2 - rn1)net'(rn1)
-        gradient_penalty = (gradient_lambda * (rn_extra - rn1)).sum(-1).pow(2).mean().clamp(max=10).to(device)
+        gradient_penalty = (gradient_lambda * (rn_extra - rn1)).sum(-1).pow(2).mean().clamp(max=100).to(device)
         loss_gp = contrastive_loss + args.lambda_gp * gradient_penalty
 
         loss_gp.backward()
