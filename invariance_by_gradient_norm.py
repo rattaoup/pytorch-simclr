@@ -42,8 +42,8 @@ parser.add_argument("--cut-off", type=int, default=1000, help='last epoch')
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
-# args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-# args.git_diff = subprocess.check_output(['git', 'diff'])
+args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+args.git_diff = subprocess.check_output(['git', 'diff'])
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 results = defaultdict(list)
@@ -86,13 +86,13 @@ if device == 'cuda':
     net.representation_dim = repr_dim
     cudnn.benchmark = True
 
+
 criterion = nn.CrossEntropyLoss()
 base_optimizer = optim.SGD(list(net.parameters()) + list(critic.parameters()), lr=args.lr, weight_decay=1e-6,
                            momentum=args.momentum)
 if args.cosine_anneal:
     scheduler = CosineAnnealingWithLinearRampLR(base_optimizer, args.num_epochs)
 encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
-
 
 if args.resume:
     # Load checkpoint.
@@ -105,6 +105,7 @@ if args.resume:
     results = checkpoint['results']
     start_epoch = checkpoint['epoch']+1
     scheduler.step(start_epoch)
+
 
 
 col_distort = ColourDistortion(s=0.5)
@@ -127,6 +128,8 @@ def train(epoch):
         x1, x2 = inputs
         x1, x2 = x1.to(device), x2.to(device)
         rn1, rn2 = col_distort.sample_random_numbers(x1.shape, x1.device), col_distort.sample_random_numbers(x2.shape, x2.device)
+        shape = (x1.shape[0]*100, *x1.shape[1:])
+        rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 4))
         x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2)
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
@@ -135,15 +138,15 @@ def train(epoch):
 
         # Gradient Penalty
         # Sum over both dimensions to give a scalar loss
-        representation1 = representation1/representation1.norm(p=2, dim=-1, keepdim=True)
-        projection_h1 = ((torch.rand(*representation1.shape, device=device) * 2 - 1) * representation1).sum()
+        projection_h1 = ((torch.bernoulli(.5 * torch.ones(*representation1.shape, device=device)) * 2 - 1) * \
+                        representation1 / representation1.norm(p=2, dim=-1, keepdim=True)).sum()
         gradient_lambda = autograd.grad(outputs=projection_h1,
                                         inputs=rn1,
                                         create_graph=True,
                                         retain_graph=True,
                                         only_inputs=True)[0]
         # Use the standard gradient approximation net(rn2) - net(rn1) \approx (rn2 - rn1)net'(rn1)
-        gradient_penalty = (gradient_lambda * (rn2 - rn1)).sum(-1).pow(2).mean().clamp(max=10).to(device)
+        gradient_penalty = (gradient_lambda * (rn_extra - rn1)).sum(-1).pow(2).mean().clamp(max=1.).to(device)
         loss_gp = contrastive_loss + args.lambda_gp * gradient_penalty
 
         loss_gp.backward()
