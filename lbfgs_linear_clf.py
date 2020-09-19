@@ -15,7 +15,7 @@ parser.add_argument("--num-workers", type=int, default=2, help='Number of thread
 parser.add_argument("--load-from", type=str, default='ckpt.pth', help='File to load from')
 parser.add_argument("--reg-lower", type=float, default=-8, help='Minimum log regularization parameter (base 10)')
 parser.add_argument("--reg-upper", type=float, default=-1, help='Maximum log regularization parameter (base 10)')
-parser.add_argument("--num-steps", type=int, default=9, help='Number of log-linearly spaced reg parameters to try')
+parser.add_argument("--num-steps", type=int, default=8, help='Number of log-linearly spaced reg parameters to try')
 parser.add_argument("--proportion", type=float, default=1., help='Proportion of train data to use')
 args = parser.parse_args()
 
