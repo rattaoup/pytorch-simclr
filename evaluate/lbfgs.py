@@ -96,3 +96,43 @@ def test_matrix(X, y, clf):
     acc = 100. * correct / y.shape[0]
     print('Loss: %.3f | Test Acc: %.3f' % (test_clf_loss, acc))
     return acc, test_clf_loss
+
+
+def train_reg(X, y, device, reg_weight=1e-3):
+    print('\nL2 Regularization weight: %g' % reg_weight)
+
+    criterion = nn.MSELoss()
+    n_lbfgs_steps = 500
+
+    # Should be reset after each epoch for a completely independent evaluation
+    reg = nn.Linear(X.shape[-1], y.shape[-1]).to(device)
+    clf_optimizer = optim.LBFGS(reg.parameters())
+    reg.train()
+
+    t = tqdm(range(n_lbfgs_steps), desc='Loss: **** | Train Acc: ****% ', bar_format='{desc}{bar}{r_bar}')
+    for _ in t:
+        def closure():
+            clf_optimizer.zero_grad()
+            raw_scores = reg(X)
+            loss = criterion(raw_scores, y)
+            loss += reg_weight * reg.weight.pow(2).sum()
+            loss.backward()
+
+            t.set_description('Loss: %.3f%%' % (loss))
+
+            return loss
+
+        clf_optimizer.step(closure)
+
+    return reg
+
+
+def test_reg(X, y, reg):
+    criterion = nn.CrossEntropyLoss()
+    reg.eval()
+    with torch.no_grad():
+        raw_scores = reg(X)
+        test_loss = criterion(raw_scores, y)
+
+    print('Loss: %.3f' % (test_loss))
+    return test_loss
