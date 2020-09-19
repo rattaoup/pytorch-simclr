@@ -39,11 +39,18 @@ parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit 
 parser.add_argument("--save-freq", type=int, default=100, help='Frequency to save checkpoints.')
 parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output file name')
 parser.add_argument("--cut-off", type=int, default=1000, help='last epoch')
+parser.add_argument("--gp-upper-limit", type=float, default=1., help='Clip the gradient penalty from above at this '
+                                                                     'value')
+parser.add_argument("--git", action='store_true', help="Record the git hash and diff (uses a subprocess call)")
+parser.add_argument("--no-gp-normalization", action='store_true', help="Apply gradient penalization without L2 "
+                                                                       "normalization, default behaviour is to "
+                                                                       "normalize")
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
-args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-args.git_diff = subprocess.check_output(['git', 'diff'])
+if args.git:
+    args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+    args.git_diff = subprocess.check_output(['git', 'diff'])
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 results = defaultdict(list)
@@ -107,7 +114,6 @@ if args.resume:
     scheduler.step(start_epoch)
 
 
-
 col_distort = ColourDistortion(s=0.5)
 batch_transform = ModuleCompose([
         col_distort,
@@ -128,7 +134,7 @@ def train(epoch):
         x1, x2 = inputs
         x1, x2 = x1.to(device), x2.to(device)
         rn1, rn2 = col_distort.sample_random_numbers(x1.shape, x1.device), col_distort.sample_random_numbers(x2.shape, x2.device)
-        shape = (x1.shape[0]*100, *x1.shape[1:])
+        shape = (x1.shape[0] * 100, *x1.shape[1:])
         rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 4))
         x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2)
         encoder_optimizer.zero_grad()
@@ -138,15 +144,18 @@ def train(epoch):
 
         # Gradient Penalty
         # Sum over both dimensions to give a scalar loss
-        projection_h1 = ((torch.bernoulli(.5 * torch.ones(*representation1.shape, device=device)) * 2 - 1) * \
-                        representation1 / representation1.norm(p=2, dim=-1, keepdim=True)).sum()
+        if args.no_gp_normalization:
+            h = representation1
+        else:
+            h = representation1 / representation1.norm(p=2, dim=-1, keepdim=True)
+        projection_h1 = ((torch.bernoulli(.5 * torch.ones(*representation1.shape, device=device)) * 2 - 1) * h).sum()
         gradient_lambda = autograd.grad(outputs=projection_h1,
                                         inputs=rn1,
                                         create_graph=True,
                                         retain_graph=True,
                                         only_inputs=True)[0]
         # Use the standard gradient approximation net(rn2) - net(rn1) \approx (rn2 - rn1)net'(rn1)
-        gradient_penalty = (gradient_lambda * (rn_extra - rn1)).sum(-1).pow(2).mean().clamp(max=1.).to(device)
+        gradient_penalty = (gradient_lambda * (rn_extra - rn1)).sum(-1).pow(2).mean().clamp(max=args.gp_upper_limit).to(device)
         loss_gp = contrastive_loss + args.lambda_gp * gradient_penalty
 
         loss_gp.backward()
