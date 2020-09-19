@@ -16,7 +16,6 @@ from evaluate import train_clf, test_matrix
 parser = argparse.ArgumentParser(description='Tune regularization coefficient of downstream classifier.')
 parser.add_argument("--num-workers", type=int, default=2, help='Number of threads for data loaders')
 parser.add_argument("--load-from", type=str, default='ckpt.pth', help='File to load from')
-parser.add_argument("--layer", type=int, default=-1, help='Layer of the network to extract')
 parser.add_argument("--type", type=str, choices=['linear', 'mlp'], default='linear', help='Classifier type')
 parser.add_argument("--num-hidden", type=int, default=2048, help='For MLP, how many hidden units?')
 parser.add_argument("--regularization", type=int, choices=[1, 2], default=2, help='Choose between L1 and L2 regularization')
@@ -60,7 +59,6 @@ elif args.arch == 'resnet50':
     net = ResNet50(stem=stem)
 else:
     raise ValueError("Bad architecture specification")
-net.set_return_layer(args.layer)
 net = net.to(device)
 
 if device == 'cuda':
@@ -106,17 +104,18 @@ def encode_feature_averaging(clftrainloader, device, net, target=None, num_passe
     return X, y
     
 
-X, y = encode_feature_averaging(clftrainloader, device, net, num_passes=args.num_passes)
-X_test, y_test = encode_feature_averaging(testloader, device, net, num_passes=args.num_passes)
-for m in torch.linspace(args.min_num_passes, args.max_num_passes, args.step_num_passes, dtype=torch.int):
+X, y = encode_feature_averaging(clftrainloader, device, net, num_passes=args.max_num_passes)
+X_test, y_test = encode_feature_averaging(testloader, device, net, num_passes=args.max_num_passes)
+for m in torch.linspace(args.min_num_passes, args.max_num_passes, args.step_num_passes):
+    m = int(m)
     print("FA with M =", m)
     best_acc = 0
     for reg_weight in torch.exp(math.log(10) * torch.linspace(args.reg_lower, args.reg_upper, args.num_steps,
                                                               dtype=torch.float, device=device)):
-        X = X[:m, ...].mean(0) / m
-        X_test = X_test[:m, ...].mean(0) / m
-        clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=reg_weight)
-        acc, loss = test_matrix(X_test, y_test, clf)
+        X_this = X[:m, ...].mean(0) / m
+        X_test_this = X_test[:m, ...].mean(0) / m
+        clf = train_clf(X_this, y, net.representation_dim, num_classes, device, reg_weight=reg_weight)
+        acc, loss = test_matrix(X_test_this, y_test, clf)
         if acc > best_acc:
             best_acc = acc
     print("Best test accuracy", best_acc, "%")

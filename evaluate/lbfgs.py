@@ -94,4 +94,5 @@ def test_matrix(X, y, clf):
         correct = predicted.eq(y).sum().item()
 
     acc = 100. * correct / y.shape[0]
+    print('Loss: %.3f | Test Acc: %.3f' % (test_clf_loss, acc))
     return acc, test_clf_loss
