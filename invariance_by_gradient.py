@@ -26,7 +26,12 @@ parser.add_argument('--resume', '-r', type=str, default='', help='resume from ch
 parser.add_argument('--dataset', '-d', type=str, default='cifar10', help='dataset',
                     choices=['cifar10', 'cifar100', 'stl10', 'imagenet'])
 parser.add_argument('--temperature', type=float, default=0.5, help='InfoNCE temperature')
-parser.add_argument('--lambda-gp', type=float, default=0., help='Gradient penalty')
+parser.add_argument('--lambda-gp', type=float, default=0., help='Gradient penalty coefficient')
+parser.add_argument("--gp-upper-limit", type=float, default=1., help='Clip the gradient penalty from above at this '
+                                                                     'value')
+parser.add_argument("--no-gp-normalization", action='store_true', help="Apply gradient penalization without L2 "
+                                                                       "normalization, default behaviour is to "
+                                                                       "normalize")
 parser.add_argument("--batch-size", type=int, default=512, help='Training batch size')
 parser.add_argument("--num-epochs", type=int, default=100, help='Number of training epochs')
 parser.add_argument("--cosine-anneal", action='store_true', help="Use cosine annealing on the learning rate")
@@ -38,12 +43,9 @@ parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit 
                                                               'classifier only training here.')
 parser.add_argument("--save-freq", type=int, default=100, help='Frequency to save checkpoints.')
 parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output file name')
-parser.add_argument("--gp-upper-limit", type=float, default=1., help='Clip the gradient penalty from above at this '
-                                                                     'value')
+parser.add_argument("--cut-off", type=int, default=1000, help='Prematurely terminate the run at this epoch '
+                                                              'If larger than num-epochs, has no effect')
 parser.add_argument("--git", action='store_true', help="Record the git hash and diff (uses a subprocess call)")
-parser.add_argument("--no-gp-normalization", action='store_true', help="Apply gradient penalization without L2 "
-                                                                       "normalization, default behaviour is to "
-                                                                       "normalize")
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
@@ -180,7 +182,7 @@ def update_results(train_contrastive_loss, train_gradient_penalty, train_total_l
     results['test_acc'].append(test_acc)
 
 
-for epoch in range(start_epoch, args.num_epochs):
+for epoch in range(start_epoch, min(args.num_epochs, args.cut_off)):
     outputs = train(epoch)
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
         X, y = encode_train_set(clftrainloader, device, net)
