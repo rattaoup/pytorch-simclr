@@ -94,7 +94,7 @@ def test_matrix(X, y, clf):
         correct = predicted.eq(y).sum().item()
 
     acc = 100. * correct / y.shape[0]
-    print('Loss: %.3f | Test Acc: %.3f' % (test_clf_loss, acc))
+    print('Loss: %.3f | Test Acc: %.3f%%' % (test_clf_loss, acc))
     return acc, test_clf_loss
 
 
@@ -118,7 +118,7 @@ def train_reg(X, y, device, reg_weight=1e-3):
             loss += reg_weight * reg.weight.pow(2).sum()
             loss.backward()
 
-            t.set_description('Loss: %.3f%%' % (loss))
+            t.set_description('Loss: %.5f' % (loss))
 
             return loss
 
@@ -128,11 +128,12 @@ def train_reg(X, y, device, reg_weight=1e-3):
 
 
 def test_reg(X, y, reg):
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.MSELoss()
     reg.eval()
     with torch.no_grad():
         raw_scores = reg(X)
         test_loss = criterion(raw_scores, y)
 
-    print('Loss: %.3f' % (test_loss))
-    return test_loss
+    print('Loss: %.5f' % (test_loss))
+    return test_loss.item()
+

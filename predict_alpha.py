@@ -101,4 +101,4 @@ for reg_weight in torch.exp(math.log(10) * torch.linspace(args.reg_lower, args.r
     loss = test_reg(X_test, y_test, clf)
     if loss < best_loss:
         best_loss = loss
-print("Best test loss", best_loss, "%")
+print("Best test loss", best_loss)
