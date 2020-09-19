@@ -148,7 +148,7 @@ def make_stratified_subset(trainset, train_proportion):
     target_length = target_n_per_task * len(trainset.classes)
     indices = []
     counts = defaultdict(lambda: 0)
-    for i in range(len(trainset)):
+    for i in torch.randperm(len(trainset)):
         y = trainset.targets[i]
         if counts[y] < target_n_per_task:
             indices.append(i)
