@@ -13,6 +13,10 @@ from models import *
 parser = argparse.ArgumentParser(description='Tune regularization coefficient of downstream classifier.')
 parser.add_argument("--num-workers", type=int, default=2, help='Number of threads for data loaders')
 parser.add_argument("--load-from", type=str, default='ckpt.pth', help='File to load from')
+parser.add_argument("--reg-lower", type=float, default=-8, help='Minimum log regularization parameter (base 10)')
+parser.add_argument("--reg-upper", type=float, default=-1, help='Maximum log regularization parameter (base 10)')
+parser.add_argument("--num-steps", type=int, default=9, help='Number of log-linearly spaced reg parameters to try')
+parser.add_argument("--proportion", type=float, default=1., help='Proportion of train data to use')
 args = parser.parse_args()
 
 # Load checkpoint.
@@ -27,7 +31,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Data
 print('==> Preparing data..')
-_, testset, clftrainset, num_classes, stem = get_datasets(args.dataset)
+_, testset, clftrainset, num_classes, stem = get_datasets(args.dataset, train_proportion=args.proportion)
 
 testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
                                          pin_memory=True)
@@ -61,7 +65,8 @@ net.load_state_dict(checkpoint['net'])
 
 best_acc = 0
 X, y = encode_train_set(clftrainloader, device, net)
-for reg_weight in torch.exp(math.log(10) * torch.linspace(-7, -3, 16, dtype=torch.float, device=device)):
+for reg_weight in torch.exp(math.log(10) * torch.linspace(args.reg_lower, args.reg_upper, args.num_steps,
+                                                              dtype=torch.float, device=device)):
     clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=reg_weight)
     acc, loss = test(testloader, device, net, clf)
     if acc > best_acc:

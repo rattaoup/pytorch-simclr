@@ -22,6 +22,7 @@ parser.add_argument("--step-num-passes", type=int, default=2, help='Number of di
 parser.add_argument("--reg-lower", type=float, default=-6, help='Minimum log regularization parameter (base 10)')
 parser.add_argument("--reg-upper", type=float, default=-4, help='Maximum log regularization parameter (base 10)')
 parser.add_argument("--num-steps", type=int, default=4, help='Number of log-linearly spaced reg parameters to try')
+parser.add_argument("--proportion", type=float, default=1., help='Proportion of train data to use')
 args = parser.parse_args()
 
 # Load checkpoint.
@@ -36,7 +37,8 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Data
 print('==> Preparing data..')
-_, testset, clftrainset, num_classes, stem = get_datasets(args.dataset, augment_clf_train=True, augment_test=True)
+_, testset, clftrainset, num_classes, stem = get_datasets(args.dataset, augment_clf_train=True, augment_test=True,
+                                                          train_proportion=args.proportion)
 
 testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
                                          pin_memory=True)

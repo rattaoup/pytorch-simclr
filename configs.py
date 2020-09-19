@@ -2,6 +2,8 @@ import json
 
 import torchvision
 import torchvision.transforms as transforms
+from torch.utils.data import Subset
+from collections import defaultdict
 
 from dataset import *
 from models import *
@@ -18,7 +20,7 @@ def get_mean_std(dataset):
 
 
 def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None,
-                 augment_test=False):
+                 augment_test=False, train_proportion=1.):
 
     PATHS = {
         'cifar10': '/data/cifar10/',
@@ -133,4 +135,24 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
     else:
         raise ValueError("Bad dataset value: {}".format(dataset))
 
+    if train_proportion < 1.:
+        trainset = make_stratified_subset(trainset, train_proportion)
+        clftrainset = make_stratified_subset(clftrainset, train_proportion)
+
     return trainset, testset, clftrainset, num_classes, stem
+
+
+def make_stratified_subset(trainset, train_proportion):
+
+    target_n_per_task = int(len(trainset) * train_proportion / len(trainset.classes))
+    target_length = target_n_per_task * len(trainset.classes)
+    indices = []
+    counts = defaultdict(lambda: 0)
+    for i in range(len(trainset)):
+        y = trainset.targets[i]
+        if counts[y] < target_n_per_task:
+            indices.append(i)
+            counts[y] += 1
+        if len(indices) >= target_length:
+            break
+    return Subset(trainset, indices)

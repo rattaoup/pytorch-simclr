@@ -1,5 +1,5 @@
-'''Train CIFAR10/100 with PyTorch using standard Contrastive Learning. This script tunes the L2 reg weight of the
-final classifier.'''
+'''Train CIFAR10/100 with PyTorch using standard Contrastive Learning. This script tunes evaluates the invariance of
+the learned representations.'''
 import torch
 import torch.backends.cudnn as cudnn
 
