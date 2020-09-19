@@ -81,3 +81,17 @@ def test(testloader, device, net, clf):
 
     acc = 100. * correct / total
     return acc, test_clf_loss / len(testloader)
+
+
+def test_matrix(X, y, clf):
+    criterion = nn.CrossEntropyLoss()
+    clf.eval()
+    with torch.no_grad():
+        raw_scores = clf(X)
+        test_clf_loss = criterion(raw_scores, y)
+
+        _, predicted = raw_scores.max(1)
+        correct = predicted.eq(y).sum().item()
+
+    acc = 100. * correct / y.shape[0]
+    return acc, test_clf_loss

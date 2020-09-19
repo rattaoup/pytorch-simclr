@@ -8,7 +8,6 @@ import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
-import torch.autograd as autograd
 from torchlars import LARS
 from tqdm import tqdm
 

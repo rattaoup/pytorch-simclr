@@ -17,7 +17,8 @@ def get_mean_std(dataset):
     return CACHED_MEAN_STD[dataset]
 
 
-def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None):
+def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None,
+                 augment_test=False):
 
     PATHS = {
         'cifar10': '/data/cifar10/',
@@ -49,12 +50,12 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
         # transforms.Normalize(*CACHED_MEAN_STD[dataset]),
     ])
 
-    if dataset == 'imagenet':
+    if augment_test:
         transform_test = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
+            transforms.RandomResizedCrop(img_size, interpolation=Image.LANCZOS),
+            transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize(*get_mean_std(dataset)),
+            # transforms.Normalize(*get_mean_std(dataset)),
         ])
     else:
         transform_test = transforms.Compose([
@@ -67,10 +68,13 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
             transforms.RandomResizedCrop(img_size, interpolation=Image.LANCZOS),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize(*get_mean_std(dataset)),
+            # transforms.Normalize(*get_mean_std(dataset)),
         ])
     else:
-        transform_clftrain = transform_test
+        transform_clftrain = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(*get_mean_std(dataset)),
+        ])
 
     if dataset == 'cifar100':
         if add_indices_to_data:
