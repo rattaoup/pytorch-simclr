@@ -5,6 +5,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import Subset
 from collections import defaultdict
 
+from augmentation import ColourDistortion, TensorNormalise, ModuleCompose, DrawSpirograph
 from dataset import *
 from models import *
 
@@ -21,6 +22,25 @@ def get_mean_std(dataset):
 
 def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None,
                  augment_test=False, train_proportion=1.):
+    if dataset == 'spirograph':
+        return get_spirograph_dataset()
+    else:
+        return get_img_datasets(dataset, augment_clf_train, add_indices_to_data, num_positive,
+                                augment_test, train_proportion)
+
+
+def get_spirograph_dataset(augment_clf_train=False, add_indices_to_data=False, num_positive=None,
+                           augment_test=False, train_proportion=1.):
+
+    spirograph = DrawSpirograph(['m', 'b', 'h'], ['sigma', 'yfore', 'yback', 'ifore', 'iback', 'qfore', 'qback'])
+    stem = StemCIFAR
+    trainset, clftrainset, testset = spirograph.dataset()
+    num_classes = 3
+    return trainset, testset, clftrainset, num_classes, stem, spirograph, spirograph
+
+
+def get_img_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None,
+                     augment_test=False, train_proportion=1.):
 
     PATHS = {
         'cifar10': '/data/cifar10/',
@@ -139,7 +159,13 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
         trainset = make_stratified_subset(trainset, train_proportion)
         clftrainset = make_stratified_subset(clftrainset, train_proportion)
 
-    return trainset, testset, clftrainset, num_classes, stem
+    col_distort = ColourDistortion(s=0.5)
+    batch_transform = ModuleCompose([
+        col_distort,
+        TensorNormalise(*get_mean_std(dataset))
+    ])
+
+    return trainset, testset, clftrainset, num_classes, stem, col_distort, batch_transform
 
 
 def make_stratified_subset(trainset, train_proportion):

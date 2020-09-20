@@ -11,8 +11,7 @@ import torch.optim as optim
 from torchlars import LARS
 from tqdm import tqdm
 
-from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
-from configs import get_datasets, get_mean_std
+from configs import get_datasets
 from critic import LinearCritic
 from evaluate import save_checkpoint, encode_train_set, train_clf, test
 from models import *
@@ -23,7 +22,7 @@ parser.add_argument('--base-lr', default=0.25, type=float, help='base learning r
 parser.add_argument("--momentum", default=0.9, type=float, help='SGD momentum')
 parser.add_argument('--resume', '-r', type=str, default='', help='resume from checkpoint with this filename')
 parser.add_argument('--dataset', '-d', type=str, default='cifar10', help='dataset',
-                    choices=['cifar10', 'cifar100', 'stl10', 'imagenet'])
+                    choices=['cifar10', 'cifar100', 'stl10', 'imagenet', 'spirograph'])
 parser.add_argument('--temperature', type=float, default=0.5, help='InfoNCE temperature')
 parser.add_argument("--batch-size", type=int, default=512, help='Training batch size')
 parser.add_argument("--num-epochs", type=int, default=100, help='Number of training epochs')
@@ -39,6 +38,8 @@ parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output fil
 parser.add_argument("--cut-off", type=int, default=1000, help='Prematurely terminate the run at this epoch '
                                                               'If larger than num-epochs, has no effect')
 parser.add_argument("--git", action='store_true', help="Record the git hash and diff (uses a subprocess call)")
+parser.add_argument("--eval-type", type=str, choices=['clf', 'reg'], help='Form of the downstream task: classification '
+                                                                          'versus regression')
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
@@ -52,7 +53,7 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 clf = None
 
 print('==> Preparing data..')
-trainset, testset, clftrainset, num_classes, stem = get_datasets(args.dataset)
+trainset, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_datasets(args.dataset)
 
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,
                                           num_workers=args.num_workers, pin_memory=True)
@@ -107,12 +108,7 @@ if args.resume:
     start_epoch = checkpoint['epoch']+1
     scheduler.step(start_epoch)
 
-
-col_distort = ColourDistortion(s=0.5)
-batch_transform = ModuleCompose([
-        col_distort,
-        TensorNormalise(*get_mean_std(args.dataset))
-    ]).to(device)
+batch_transform = batch_transform.to(device)
 
 
 # Training

@@ -167,3 +167,12 @@ def add_indices(dataset_cls):
             return (*output, item)
 
     return NewClass
+
+
+def biaugment(dataset_cls):
+    class NewClass(dataset_cls):
+        def __getitem__(self, item):
+            x, y = super(NewClass, self).__getitem__(item)
+            return (x, x), y, item
+
+    return NewClass
