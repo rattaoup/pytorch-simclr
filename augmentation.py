@@ -63,7 +63,7 @@ def adjust_hue(img, scale):
     if len(img.shape) == 3:
         T_hue = torch.tensor([1, 0, 0,
                               0, torch.cos(scale), -torch.sin(scale),
-                              0, -torch.sin(scale), torch.cos(scale)], device=img.device).reshape(3, 3)
+                              0, torch.sin(scale), torch.cos(scale)], device=img.device).reshape(3, 3)
         T_final = torch.matmul(torch.matmul(T_rgb, T_hue), T_yiq)
         return rmv(T_final, img.transpose(0, -1)).transpose(-1, 0)
 
@@ -71,7 +71,7 @@ def adjust_hue(img, scale):
         B = img.shape[0]
         T_hue = torch.stack([torch.ones(B, device=scale.device), torch.zeros(B, device=scale.device), torch.zeros(B, device=scale.device),
                              torch.zeros(B, device=scale.device), torch.cos(scale), -torch.sin(scale),
-                             torch.zeros(B, device=scale.device), -torch.sin(scale), torch.cos(scale)], dim=-1).reshape(B, 3, 3)
+                             torch.zeros(B, device=scale.device), torch.sin(scale), torch.cos(scale)], dim=-1).reshape(B, 3, 3)
         T_final = torch.matmul(torch.matmul(T_rgb, T_hue), T_yiq).unsqueeze(1).unsqueeze(1)
         return rmv(T_final, img.transpose(1, -1)).transpose(-1, 1)
 
@@ -226,7 +226,7 @@ class TensorColorJitter(nn.Module):
             PIL Image or Tensor: Color jittered image.
         """
         B = img.shape[0]
-        order = torch.randperm(4)
+        order = [0, 1, 2, 3]
         for i in order:
             if i == 0:
                 img = adjust_brightness(img, aug_parameters[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1))

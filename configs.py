@@ -2,6 +2,8 @@ import json
 
 import torchvision
 import torchvision.transforms as transforms
+from torch.utils.data import Subset
+from collections import defaultdict
 
 from dataset import *
 from models import *
@@ -17,7 +19,8 @@ def get_mean_std(dataset):
     return CACHED_MEAN_STD[dataset]
 
 
-def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None):
+def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None,
+                 augment_test=False, train_proportion=1.):
 
     PATHS = {
         'cifar10': '/data/cifar10/',
@@ -49,12 +52,12 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
         # transforms.Normalize(*CACHED_MEAN_STD[dataset]),
     ])
 
-    if dataset == 'imagenet':
+    if augment_test:
         transform_test = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
+            transforms.RandomResizedCrop(img_size, interpolation=Image.LANCZOS),
+            transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize(*get_mean_std(dataset)),
+            # transforms.Normalize(*get_mean_std(dataset)),
         ])
     else:
         transform_test = transforms.Compose([
@@ -67,10 +70,13 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
             transforms.RandomResizedCrop(img_size, interpolation=Image.LANCZOS),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize(*get_mean_std(dataset)),
+            # transforms.Normalize(*get_mean_std(dataset)),
         ])
     else:
-        transform_clftrain = transform_test
+        transform_clftrain = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(*get_mean_std(dataset)),
+        ])
 
     if dataset == 'cifar100':
         if add_indices_to_data:
@@ -129,4 +135,24 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
     else:
         raise ValueError("Bad dataset value: {}".format(dataset))
 
+    if train_proportion < 1.:
+        trainset = make_stratified_subset(trainset, train_proportion)
+        clftrainset = make_stratified_subset(clftrainset, train_proportion)
+
     return trainset, testset, clftrainset, num_classes, stem
+
+
+def make_stratified_subset(trainset, train_proportion):
+
+    target_n_per_task = int(len(trainset) * train_proportion / len(trainset.classes))
+    target_length = target_n_per_task * len(trainset.classes)
+    indices = []
+    counts = defaultdict(lambda: 0)
+    for i in torch.randperm(len(trainset)):
+        y = trainset.targets[i]
+        if counts[y] < target_n_per_task:
+            indices.append(i)
+            counts[y] += 1
+        if len(indices) >= target_length:
+            break
+    return Subset(trainset, indices)
