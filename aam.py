@@ -38,8 +38,6 @@ parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output fil
 parser.add_argument("--cut-off", type=int, default=1000, help='Prematurely terminate the run at this epoch '
                                                               'If larger than num-epochs, has no effect')
 parser.add_argument("--git", action='store_true', help="Record the git hash and diff (uses a subprocess call)")
-parser.add_argument("--eval-type", type=str, choices=['clf', 'reg'], help='Form of the downstream task: classification '
-                                                                          'versus regression')
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
