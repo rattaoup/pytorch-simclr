@@ -113,4 +113,4 @@ for m in torch.linspace(args.min_num_passes, args.max_num_passes, args.step_num_
         loss = test_reg(X_test_this, y_test, clf)
         if loss < best_loss:
             best_loss = loss
-    print("Best test accuracy", best_loss.item())
+    print("Best test accuracy", best_loss)
