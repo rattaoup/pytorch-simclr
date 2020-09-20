@@ -24,7 +24,7 @@ parser.add_argument('--base-lr', default=0.25, type=float, help='base learning r
 parser.add_argument("--momentum", default=0.9, type=float, help='SGD momentum')
 parser.add_argument('--resume', '-r', type=str, default='', help='resume from checkpoint with this filename')
 parser.add_argument('--dataset', '-d', type=str, default='cifar10', help='dataset',
-                    choices=['cifar10', 'cifar100', 'stl10', 'imagenet'])
+                    choices=['cifar10', 'cifar100', 'stl10', 'imagenet', 'spirograph'])
 parser.add_argument('--temperature', type=float, default=0.5, help='InfoNCE temperature')
 parser.add_argument('--lambda-gp', type=float, default=0., help='Gradient penalty coefficient')
 parser.add_argument("--gp-upper-limit", type=float, default=1., help='Clip the gradient penalty from above at this '
