@@ -36,7 +36,7 @@ best_acc = 0
 
 # Data
 print('==> Preparing data..')
-_, testset, clftrainset, num_classes, stem = get_datasets(args.dataset, augment_clf_train=True)
+_, testset, clftrainset, num_classes, stem, _, _ = get_datasets(args.dataset, augment_clf_train=True)
 
 testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False,
                                          num_workers=args.num_workers, pin_memory=True)

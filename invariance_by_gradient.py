@@ -59,7 +59,7 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 clf = None
 
 print('==> Preparing data..')
-trainset, testset, clftrainset, num_classes, stem = get_datasets(args.dataset)
+trainset, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_datasets(args.dataset)
 
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,
                                           num_workers=args.num_workers, pin_memory=True)
@@ -114,12 +114,7 @@ if args.resume:
     start_epoch = checkpoint['epoch']+1
     scheduler.step(start_epoch)
 
-
-col_distort = ColourDistortion(s=0.5)
-batch_transform = ModuleCompose([
-        col_distort,
-        TensorNormalise(*get_mean_std(args.dataset))
-    ]).to(device)
+batch_transform = batch_transform.to(device)
 
 
 # Training

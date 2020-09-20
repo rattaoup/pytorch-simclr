@@ -31,7 +31,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Data
 print('==> Preparing data..')
-_, testset, clftrainset, num_classes, stem = get_datasets(args.dataset, train_proportion=args.proportion)
+_, testset, clftrainset, num_classes, stem, _, _ = get_datasets(args.dataset, train_proportion=args.proportion)
 
 testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
                                          pin_memory=True)

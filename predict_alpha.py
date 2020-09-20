@@ -32,7 +32,8 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Data
 print('==> Preparing data..')
-_, testset, clftrainset, _, stem = get_datasets(args.dataset, augment_clf_train=True, augment_test=True)
+_, testset, clftrainset, _, stem, col_distort, batch_transform = get_datasets(
+    args.dataset, augment_clf_train=True, augment_test=True)
 
 testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
                                          pin_memory=True)
@@ -63,11 +64,7 @@ if device == 'cuda':
 print('==> Loading encoder from checkpoint..')
 net.load_state_dict(checkpoint['net'])
 
-col_distort = ColourDistortion(s=0.5)
-batch_transform = ModuleCompose([
-        col_distort,
-        TensorNormalise(*get_mean_std(args.dataset))
-    ]).to(device)
+batch_transform = batch_transform.to(device)
 
 
 def create_dataset(clftrainloader, device, net, target=None):
