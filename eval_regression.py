@@ -11,7 +11,7 @@ from tqdm import tqdm
 from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from models import *
 from configs import get_datasets, get_mean_std
-from evaluate import train_clf, test_matrix
+from evaluate import train_reg, test_reg
 
 parser = argparse.ArgumentParser(description='Tune regularization coefficient of downstream classifier.')
 parser.add_argument("--num-workers", type=int, default=2, help='Number of threads for data loaders')
@@ -104,13 +104,13 @@ X_test, y_test = encode_feature_averaging(testloader, device, net, num_passes=ar
 for m in torch.linspace(args.min_num_passes, args.max_num_passes, args.step_num_passes):
     m = int(m)
     print("FA with M =", m)
-    best_acc = 0
+    best_loss = float('inf')
     for reg_weight in torch.exp(math.log(10) * torch.linspace(args.reg_lower, args.reg_upper, args.num_steps,
                                                               dtype=torch.float, device=device)):
         X_this = X[:m, ...].mean(0) / m
         X_test_this = X_test[:m, ...].mean(0) / m
-        clf = train_clf(X_this, y, net.representation_dim, num_classes, device, reg_weight=reg_weight)
-        acc, loss = test_matrix(X_test_this, y_test, clf)
-        if acc > best_acc:
-            best_acc = acc
-    print("Best test accuracy", best_acc, "%")
+        clf = train_reg(X_this, y, device, reg_weight=reg_weight)
+        loss = test_reg(X_test_this, y_test, clf)
+        if loss < best_loss:
+            best_loss = loss
+    print("Best test accuracy", best_loss)

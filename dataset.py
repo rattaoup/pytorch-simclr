@@ -167,3 +167,10 @@ def add_indices(dataset_cls):
             return (*output, item)
 
     return NewClass
+
+
+class BiaugmentTensorDataset(torch.utils.data.TensorDataset):
+    
+    def __getitem__(self, item):
+        x, y = super().__getitem__(item)
+        return (x, x), y, item
