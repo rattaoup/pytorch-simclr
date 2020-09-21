@@ -95,7 +95,6 @@ def get_loss(fname):
     return compute_trcov(testloader, device, net)
 
 
-
 baselines = args.baselines.split(",")
 ours = args.ours.split(",")
 results = defaultdict(list)
