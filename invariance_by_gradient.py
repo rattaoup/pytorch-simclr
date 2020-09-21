@@ -131,7 +131,10 @@ def train(epoch):
         x1, x2 = x1.to(device), x2.to(device)
         rn1, rn2 = col_distort.sample_random_numbers(x1.shape, x1.device), col_distort.sample_random_numbers(x2.shape, x2.device)
         shape = (x1.shape[0] * 100, *x1.shape[1:])
-        rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 4))
+        if args.dataset == 'spirograph':
+            rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 6))
+        else:
+            rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 4))
         x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2)
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
