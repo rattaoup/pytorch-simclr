@@ -99,18 +99,16 @@ def encode_feature_averaging(clftrainloader, device, net, target=None, num_passe
     return X, y
     
 
-X, y = encode_feature_averaging(clftrainloader, device, net, num_passes=args.max_num_passes)
-X_test, y_test = encode_feature_averaging(testloader, device, net, num_passes=args.max_num_passes)
+results = []
+X, y = encode_feature_averaging(clftrainloader, device, net, num_passes=args.max_num_passes, target='cpu')
+X_test, y_test = encode_feature_averaging(testloader, device, net, num_passes=args.max_num_passes, target='cpu')
 for m in torch.linspace(args.min_num_passes, args.max_num_passes, args.step_num_passes):
     m = int(m)
     print("FA with M =", m)
-    best_acc = 0
-    for reg_weight in torch.exp(math.log(10) * torch.linspace(args.reg_lower, args.reg_upper, args.num_steps,
-                                                              dtype=torch.float, device=device)):
-        X_this = X[:m, ...].mean(0) / m
-        X_test_this = X_test[:m, ...].mean(0) / m
-        clf = train_clf(X_this, y, net.representation_dim, num_classes, device, reg_weight=reg_weight)
-        acc, loss = test_matrix(X_test_this, y_test, clf)
-        if acc > best_acc:
-            best_acc = acc
-    print("Best test accuracy", best_acc, "%")
+    X_this = X[:m, ...].mean(0)
+    X_test_this = X_test[:m, ...].mean(0)
+    clf = train_clf(X_this.to(device), y.to(device), net.representation_dim, num_classes, device, reg_weight=1e-5)
+    acc, loss = test_matrix(X_test_this.to(device), y_test.to(device), clf)
+    results.append((acc,loss))
+print(results)
+
