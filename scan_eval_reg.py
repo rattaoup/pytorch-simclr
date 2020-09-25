@@ -12,12 +12,13 @@ from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from models import *
 from configs import get_datasets, get_mean_std
 from evaluate import train_reg, test_reg
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Tune regularization coefficient of downstream classifier.')
 parser.add_argument("--num-workers", type=int, default=2, help='Number of threads for data loaders')
 parser.add_argument("--baselines", type=str, default='ckpt', help='File series to load for baseline')
 parser.add_argument("--ours", type=str, default='invgpn', help='File series to load for our method')
-parser.add_argument("--reg", type=float, default=1e-5, help='Regularization parameter')
+parser.add_argument("--reg", type=float, default=1e-8, help='Regularization parameter')
 args = parser.parse_args()
 
 
@@ -33,13 +34,12 @@ def get_loss(fname):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # Data
-    _, testset, clftrainset, _, stem, col_distort, batch_transform = get_datasets(
-        args.dataset, augment_clf_train=True, augment_test=True)
+    trainset, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_datasets(args.dataset, train_proportion=1.0)
 
     testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
                                              pin_memory=True)
     clftrainloader = torch.utils.data.DataLoader(clftrainset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
-                                                 pin_memory=True)
+                                             pin_memory=True)
 
     # Model
     ##############################################################
@@ -66,30 +66,30 @@ def get_loss(fname):
     batch_transform = batch_transform.to(device)
 
 
-    def create_dataset(clftrainloader, device, net, target=None):
-        if target is None:
-            target = device
-
+    def encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform):
         net.eval()
 
+        store = []
         with torch.no_grad():
-            store = []
-            for batch_idx, (inputs, _) in enumerate(clftrainloader):
-                inputs = inputs.to(device)
-                rn = col_distort.sample_random_numbers(inputs.shape, inputs.device)
-                inputs = batch_transform(inputs, rn)
+            t = tqdm(enumerate(clftrainloader), desc='Encoded: **/** ', total=len(clftrainloader),
+                     bar_format='{desc}{bar}{r_bar}')
+            for batch_idx, (inputs, targets) in t:
+                inputs, targets = inputs.to(device), targets.to(device)
+                shape = (inputs.shape[0] * 100, *inputs.shape[1:])
+                rn1 = col_distort.sample_random_numbers(inputs.shape, inputs.device)
+                inputs = batch_transform(inputs, rn1)
                 representation = net(inputs)
-                representation = representation.to(target)
-                store.append((representation, rn))
+                store.append((representation, targets))
 
-            Xi, y = zip(*store)
-            Xi, y = torch.cat(Xi, dim=0), torch.cat(y, dim=0)
+                t.set_description('Encoded %d/%d' % (batch_idx, len(clftrainloader)))
 
-        return Xi, y
+        X, y = zip(*store)
+        X, y = torch.cat(X, dim=0), torch.cat(y, dim=0)
+        return X, y
 
 
-    X, y = create_dataset(clftrainloader, device, net)
-    X_test, y_test = create_dataset(testloader, device, net)
+    X, y = encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform)
+    X_test, y_test = encode_train_set_spirograph(testloader, device, net, col_distort, batch_transform)
     clf = train_reg(X, y, device, reg_weight=args.reg)
     loss = test_reg(X_test, y_test, clf)
     return loss

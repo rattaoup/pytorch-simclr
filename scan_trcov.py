@@ -90,16 +90,17 @@ def get_loss(fname):
             trcov_all = torch.cat(store, dim=0)
 
         return trcov_all.mean()
-        
+
 
     return compute_trcov(testloader, device, net)
+
 
 
 baselines = args.baselines.split(",")
 ours = args.ours.split(",")
 results = defaultdict(list)
 for stem in baselines+ours:
-    for epoch in range(99, 1000, 100):
+    for epoch in range(9,50,10):
         fname = stem + '_epoch{:03d}.pth'.format(epoch)
         loss = get_loss(fname)
         results[stem].append(loss)
