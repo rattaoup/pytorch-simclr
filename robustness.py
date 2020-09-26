@@ -22,6 +22,7 @@ parser.add_argument("--proportion", type=float, default=1., help='Proportion of 
 parser.add_argument("--max-s", type=float, default=2., help='Max colour distortion strength to use')
 parser.add_argument("--min-s", type=float, default=0., help='Min colour distortion strength to use')
 parser.add_argument("--step-s", type=int, default=6, help='Number of steps of colour distortion')
+parser.add_argument("--mean-shift", action="store_true", help='Apply mean shift, rather than variance shift')
 args = parser.parse_args()
 
 # Load checkpoint.
@@ -77,7 +78,11 @@ def encode_feature_averaging(clftrainloader, device, net, target=None, num_passe
     if target is None:
         target = device
 
-    col_distort = TensorColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
+    if args.mean_shift:
+        col_distort = TensorColorJitter(1e-5, 1e-5, 1e-5, 1e-5,
+                                        1 + 0.8*s, 1 + 0.8*s, 1 + 0.8*s, 0.5*s)
+    else:
+        col_distort = TensorColorJitter(0.8*s, 0.8*s, 0.8*s, 0.5*s)
     batch_transform = ModuleCompose([
         col_distort,
         TensorNormalise(*get_mean_std(args.dataset))
