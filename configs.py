@@ -21,19 +21,19 @@ def get_mean_std(dataset):
 
 
 def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None,
-                 augment_test=False, train_proportion=1.):
+                 augment_test=False, train_proportion=1.,s = 0.5):
     if dataset == 'spirograph':
-        return get_spirograph_dataset()
+        return get_spirograph_dataset(train_proportion = train_proportion)
     else:
         return get_img_datasets(dataset, augment_clf_train, add_indices_to_data, num_positive,
-                                augment_test, train_proportion)
+                                augment_test, train_proportion, s=s)
 
 
 def get_spirograph_dataset(augment_clf_train=False, add_indices_to_data=False, num_positive=None,
-                           augment_test=False, train_proportion=1., rgb_fore_bounds = (.4, 1), rgb_back_bounds=(0, .6)):
+                           augment_test=False, train_proportion=1., rgb_fore_bounds = (.4, 1), rgb_back_bounds=(0, .6), h_bounds=(.5, 2.5)):
 
     spirograph = DrawSpirograph(['m', 'b', 'sigma', 'rfore'], ['h', 'rback', 'gfore', 'gback', 'bfore', 'bback'],
-                                rgb_fore_bounds= rgb_fore_bounds, rgb_back_bounds=rgb_back_bounds)
+                                rgb_fore_bounds= rgb_fore_bounds, rgb_back_bounds=rgb_back_bounds, h_bounds = h_bounds, train_proportion=train_proportion)
     stem = StemCIFAR
     trainset, clftrainset, testset = spirograph.dataset()
     num_classes = 3
@@ -41,7 +41,7 @@ def get_spirograph_dataset(augment_clf_train=False, add_indices_to_data=False, n
 
 
 def get_img_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None,
-                     augment_test=False, train_proportion=1.):
+                     augment_test=False, train_proportion=1., s=0.5):
 
     PATHS = {
         'cifar10': '/data/cifar10/',
@@ -160,7 +160,7 @@ def get_img_datasets(dataset, augment_clf_train=False, add_indices_to_data=False
         trainset = make_stratified_subset(trainset, train_proportion)
         clftrainset = make_stratified_subset(clftrainset, train_proportion)
 
-    col_distort = ColourDistortion(s=0.5)
+    col_distort = ColourDistortion(s=s)
     batch_transform = ModuleCompose([
         col_distort,
         TensorNormalise(*get_mean_std(dataset))

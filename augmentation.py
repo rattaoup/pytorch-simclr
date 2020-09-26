@@ -271,7 +271,7 @@ class DrawSpirograph(nn.Module):
     all_params = {'m', 'b', 'h', 'sigma', 'rfore', 'rback', 'gfore', 'gback', 'bfore', 'bback'}
 
     def __init__(self, data_params, transform_params, m_bounds=(2, 5), b_bounds=(.1, 1.1), h_bounds=(.5, 2.5),
-                 sigma_bounds=(.25, 1), rgb_fore_bounds=(.4, 1), rgb_back_bounds=(0, .6)):
+                 sigma_bounds=(.25, 1), rgb_fore_bounds=(.4, 1), rgb_back_bounds=(0, .6), train_proportion = 1.0):
         assert set(data_params) | set(transform_params) == DrawSpirograph.all_params
         assert set(data_params) & set(transform_params) == set()
         super().__init__()
@@ -289,8 +289,11 @@ class DrawSpirograph(nn.Module):
             ('bfore', rgb_fore_bounds),
             ('bback', rgb_back_bounds)
         ])
+        self.train_proportion = train_proportion
 
-    def dataset(self, train_length=100000, test_length=20000, device='cpu'):
+    def dataset(self, train_length= 100000, test_length= 20000, device='cpu'):
+        train_length= int(train_length*self.train_proportion)
+        test_length= int(test_length*self.train_proportion)
         params = []
         for label, bound in self.bounds.items():
             if label in self.data_params:
