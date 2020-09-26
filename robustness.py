@@ -82,7 +82,7 @@ def encode_feature_averaging(clftrainloader, device, net, target=None, num_passe
         col_distort = TensorColorJitter(1e-5, 1e-5, 1e-5, 1e-5,
                                         1 + 0.8*s, 1 + 0.8*s, 1 + 0.8*s, 0.5*s)
     else:
-        col_distort = TensorColorJitter(0.8*s, 0.8*s, 0.8*s, 0.5*s)
+        col_distort = TensorColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
     batch_transform = ModuleCompose([
         col_distort,
         TensorNormalise(*get_mean_std(args.dataset))
