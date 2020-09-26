@@ -4,12 +4,11 @@ import torch
 import torch.backends.cudnn as cudnn
 from torchvision import transforms
 
-import math
 import os
 import argparse
 from tqdm import tqdm
 
-from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
+from augmentation import TensorColorJitter, TensorNormalise, ModuleCompose
 from models import *
 from configs import get_datasets, get_mean_std, get_root, get_datasets_from_transform
 from evaluate import train_clf, test_matrix
@@ -78,7 +77,7 @@ def encode_feature_averaging(clftrainloader, device, net, target=None, num_passe
     if target is None:
         target = device
 
-    col_distort = ColourDistortion(s=s)
+    col_distort = TensorColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)
     batch_transform = ModuleCompose([
         col_distort,
         TensorNormalise(*get_mean_std(args.dataset))
@@ -109,9 +108,10 @@ def encode_feature_averaging(clftrainloader, device, net, target=None, num_passe
 
 results = []
 for s in torch.linspace(args.min_s, args.max_s, args.step_s):
+    s = s.item()
     X, y = encode_feature_averaging(clftrainloader, device, net, num_passes=args.num_passes, target='cpu', s=s)
     X_test, y_test = encode_feature_averaging(testloader, device, net, num_passes=args.num_passes, target='cpu', s=s)
-    print("Strength =", s)
+    print("\nStrength =", s)
 
     clf = train_clf(X.to(device), y.to(device), net.representation_dim, num_classes, device, reg_weight=args.reg_weight)
     acc, loss = test_matrix(X_test.to(device), y_test.to(device), clf)
