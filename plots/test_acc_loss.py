@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def se(array, axis=0):
     return array.std(axis=axis) / np.sqrt(array.shape[axis])
 
