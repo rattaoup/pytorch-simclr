@@ -134,15 +134,16 @@ class TensorGrayscale(nn.Module):
 
 class TensorColorJitter(nn.Module):
 
-    def __init__(self, brightness=0., contrast=0., saturation=0., hue=0.):
+    def __init__(self, brightness=0., contrast=0., saturation=0., hue=0.,
+                 brightness_center=1., contrast_center=1., sat_center=1., hue_center=0.):
         super().__init__()
-        self.brightness = self._check_input(brightness, 'brightness')
-        self.contrast = self._check_input(contrast, 'contrast')
-        self.saturation = self._check_input(saturation, 'saturation')
-        self.hue = self._check_input(hue, 'hue', center=0, bound=(-0.5, 0.5),
+        self.brightness = self._check_input(brightness, 'brightness', center=brightness_center)
+        self.contrast = self._check_input(contrast, 'contrast', center=contrast_center)
+        self.saturation = self._check_input(saturation, 'saturation', center=sat_center)
+        self.hue = self._check_input(hue, 'hue', center=hue_center, bound=(-0.5, 0.5),
                                      clip_first_on_zero=False)
 
-    def _check_input(self, value, name, center=1, bound=(0, float('inf')), clip_first_on_zero=True):
+    def _check_input(self, value, name, center=1., bound=(0, float('inf')), clip_first_on_zero=True):
         if isinstance(value, numbers.Number):
             if value < 0:
                 raise ValueError("If {} is a single number, it must be non negative.".format(name))
