@@ -30,9 +30,10 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
 
 
 def get_spirograph_dataset(augment_clf_train=False, add_indices_to_data=False, num_positive=None,
-                           augment_test=False, train_proportion=1.):
+                           augment_test=False, train_proportion=1., rgb_fore_bounds = (.4, 1), rgb_back_bounds=(0, .6)):
 
-    spirograph = DrawSpirograph(['m', 'b', 'sigma', 'rfore'], ['h', 'rback', 'gfore', 'gback', 'bfore', 'bback'])
+    spirograph = DrawSpirograph(['m', 'b', 'sigma', 'rfore'], ['h', 'rback', 'gfore', 'gback', 'bfore', 'bback'],
+                                rgb_fore_bounds= rgb_fore_bounds, rgb_back_bounds=rgb_back_bounds)
     stem = StemCIFAR
     trainset, clftrainset, testset = spirograph.dataset()
     num_classes = 3

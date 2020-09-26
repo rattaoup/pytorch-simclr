@@ -356,4 +356,3 @@ class DrawSpirograph(nn.Module):
         rgb = v * col_fore_rgb.unsqueeze(-1).unsqueeze(-1) + (1 - v) * col_back_rgb.unsqueeze(-1).unsqueeze(-1)
 
         return rgb
-

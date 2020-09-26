@@ -6,7 +6,7 @@ import math
 import torch
 import torch.backends.cudnn as cudnn
 
-from configs import get_datasets
+from configs import get_datasets, get_spirograph_dataset
 from evaluate import encode_train_set, train_clf, test, train_reg, test_reg
 from models import *
 from tqdm import tqdm
@@ -15,9 +15,13 @@ parser = argparse.ArgumentParser(description='Tune regularization coefficient of
 parser.add_argument("--num-workers", type=int, default=2, help='Number of threads for data loaders')
 parser.add_argument("--load-from", type=str, default='ckpt.pth', help='File to load from')
 parser.add_argument("--reg-lower", type=float, default=-8, help='Minimum log regularization parameter (base 10)')
-parser.add_argument("--reg-upper", type=float, default=-1, help='Maximum log regularization parameter (base 10)')
-parser.add_argument("--num-steps", type=int, default=8, help='Number of log-linearly spaced reg parameters to try')
+parser.add_argument("--reg-upper", type=float, default=-8, help='Maximum log regularization parameter (base 10)')
+parser.add_argument("--num-steps", type=int, default=1, help='Number of log-linearly spaced reg parameters to try')
 parser.add_argument("--proportion", type=float, default=1., help='Proportion of train data to use')
+parser.add_argument("--fore-lower", type = float, default=0.4, help = 'Lower bound for fore rgb augmentation')
+parser.add_argument("--fore-upper", type = float, default=1.0, help = 'Upper bound for fore rgb augmentation')
+parser.add_argument("--back-lower", type = float, default=0, help = 'Lower bound for back rgb augmentation')
+parser.add_argument("--back-upper", type = float, default=0.6, help = 'Upper bound for back rgb augmentation')
 args = parser.parse_args()
 
 # Load checkpoint.
@@ -30,9 +34,12 @@ args.arch = checkpoint['args']['arch']
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+
+
+
 # Data
 print('==> Preparing data..')
-trainset, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_datasets(args.dataset, train_proportion=args.proportion)
+trainset, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_spirograph_dataset(rgb_fore_bounds = (.4, 1), rgb_back_bounds=(0, .6))
 
 testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
                                          pin_memory=True)
@@ -83,6 +90,7 @@ def encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_
     X, y = zip(*store)
     X, y = torch.cat(X, dim=0), torch.cat(y, dim=0)
     return X, y
+
 
 best_acc = 0
 best_loss = float('inf')
