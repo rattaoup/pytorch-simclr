@@ -109,10 +109,9 @@ def encode_feature_averaging(clftrainloader, device, net, target=None, num_passe
 results = []
 for s in torch.linspace(args.min_s, args.max_s, args.step_s):
     s = s.item()
+    print("\nStrength =", s)
     X, y = encode_feature_averaging(clftrainloader, device, net, num_passes=args.num_passes, target='cpu', s=s)
     X_test, y_test = encode_feature_averaging(testloader, device, net, num_passes=args.num_passes, target='cpu', s=s)
-    print("\nStrength =", s)
-
     clf = train_clf(X.to(device), y.to(device), net.representation_dim, num_classes, device, reg_weight=args.reg_weight)
     acc, loss = test_matrix(X_test.to(device), y_test.to(device), clf)
     results.append((acc,loss))
