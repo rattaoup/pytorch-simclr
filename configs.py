@@ -1,5 +1,6 @@
 import json
 
+import torch
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import Subset
@@ -25,8 +26,9 @@ def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, nu
     if dataset == 'spirograph':
         return get_spirograph_dataset(train_proportion = train_proportion)
     else:
-        return get_img_datasets(dataset, augment_clf_train, add_indices_to_data, num_positive,
-                                augment_test, train_proportion, s=s)
+        return get_img_datasets(dataset=dataset, augment_clf_train=augment_clf_train,
+                                add_indices_to_data=add_indices_to_data, num_positive=num_positive,
+                                augment_test=augment_test, train_proportion=train_proportion, s = s)
 
 
 def get_spirograph_dataset(augment_clf_train=False, add_indices_to_data=False, num_positive=None,
@@ -40,9 +42,7 @@ def get_spirograph_dataset(augment_clf_train=False, add_indices_to_data=False, n
     return trainset, testset, clftrainset, num_classes, stem, spirograph, spirograph
 
 
-def get_img_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None,
-                     augment_test=False, train_proportion=1., s=0.5):
-
+def get_root(dataset):
     PATHS = {
         'cifar10': '/data/cifar10/',
         'cifar100': '/data/cifar100/',
@@ -56,6 +56,13 @@ def get_img_datasets(dataset, augment_clf_train=False, add_indices_to_data=False
     except FileNotFoundError:
         pass
     root = PATHS[dataset]
+    return root
+
+
+def get_img_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None,
+                     augment_test=False, train_proportion=1.):
+
+    root = get_root(dataset)
 
     # Data
     if dataset == 'stl10':
@@ -98,6 +105,14 @@ def get_img_datasets(dataset, augment_clf_train=False, add_indices_to_data=False
             transforms.ToTensor(),
             transforms.Normalize(*get_mean_std(dataset)),
         ])
+
+        return get_datasets_from_transform(dataset, root, transform_train, transform_test, transform_clftrain,
+                                           add_indices_to_data=add_indices_to_data, num_positive=num_positive,
+                                           train_proportion=train_proportion)
+
+
+def get_datasets_from_transform(dataset, root, transform_train, transform_test, transform_clftrain,
+                                add_indices_to_data=False, num_positive=None, train_proportion=1.):
 
     if dataset == 'cifar100':
         if add_indices_to_data:

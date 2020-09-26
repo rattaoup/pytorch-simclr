@@ -80,7 +80,7 @@ def test(testloader, device, net, clf):
             t.set_description('Loss: %.3f | Test Acc: %.3f%% ' % (test_clf_loss / (batch_idx + 1), 100. * correct / total))
 
     acc = 100. * correct / total
-    return acc, test_clf_loss / len(testloader)
+    return acc, test_clf_loss.item() / len(testloader)
 
 
 def test_matrix(X, y, clf):
@@ -95,7 +95,7 @@ def test_matrix(X, y, clf):
 
     acc = 100. * correct / y.shape[0]
     print('Loss: %.3f | Test Acc: %.3f%%' % (test_clf_loss, acc))
-    return acc, test_clf_loss
+    return acc, test_clf_loss.item()
 
 
 def train_reg(X, y, device, reg_weight=1e-3):
