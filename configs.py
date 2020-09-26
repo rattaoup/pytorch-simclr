@@ -22,7 +22,7 @@ def get_mean_std(dataset):
 
 
 def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None,
-                 augment_test=False, train_proportion=1.,s=.5):
+                 augment_test=False, train_proportion=1., s=.5):
     if dataset == 'spirograph':
         return get_spirograph_dataset(train_proportion = train_proportion)
     else:
@@ -106,9 +106,9 @@ def get_img_datasets(dataset, augment_clf_train=False, add_indices_to_data=False
             transforms.Normalize(*get_mean_std(dataset)),
         ])
 
-        return get_datasets_from_transform(dataset, root, transform_train, transform_test, transform_clftrain,
-                                           add_indices_to_data=add_indices_to_data, num_positive=num_positive,
-                                           train_proportion=train_proportion, s=s)
+    return get_datasets_from_transform(dataset, root, transform_train, transform_test, transform_clftrain,
+                                       add_indices_to_data=add_indices_to_data, num_positive=num_positive,
+                                       train_proportion=train_proportion, s=s)
 
 
 def get_datasets_from_transform(dataset, root, transform_train, transform_test, transform_clftrain,
