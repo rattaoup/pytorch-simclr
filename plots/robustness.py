@@ -34,17 +34,17 @@ if __name__ == '__main__':
     inv_acc = np.stack([np.array([y[0] for y in data[x][:-1]]) for x in invs])
     inv_loss = np.stack([np.array([y[1] for y in data[x][:-1]]) for x in invs])
 
-    plt.figure(figsize=(5.5, 3.5))
+    plt.figure(figsize=(4.5, 3.5))
 
     params = np.linspace(1e-5, 1., 9)[:-1]
     base_mean, base_se = baseline_acc.mean(0), se(baseline_acc, 0)
-    col = '#377e82'
-    plt.plot(params, base_mean, color=col, marker='x', markersize=7)
+    col = '#1f77b4'
+    plt.plot(params, base_mean, color=col, marker='o', markersize=7, markeredgewidth=0.)
     plt.fill_between(params, base_mean + base_se, base_mean - base_se, alpha=0.15, color=col)
 
     inv_mean, inv_se = inv_acc.mean(0), se(inv_acc, 0)
-    col2 = '#375e82'
-    plt.plot(params, inv_mean, color=col2, marker='.', markersize=7)
+    col2 = '#ff7f0e'
+    plt.plot(params, inv_mean, color=col2, marker='x', markersize=7)
     plt.fill_between(params, inv_mean + inv_se, inv_mean - inv_se, alpha=0.15, color=col2)
 
     plt.xlabel('Transformation strength $s$')
@@ -53,16 +53,16 @@ if __name__ == '__main__':
 
     plt.show()
 
-    plt.figure(figsize=(5.5, 3.5))
+    plt.figure(figsize=(4.5, 3.5))
 
     base_mean, base_se = baseline_loss.mean(0), se(baseline_loss, 0)
-    col = '#377e82'
-    plt.plot(params, base_mean, color=col, marker='x', markersize=7)
+    col = '#1f77b4'
+    plt.plot(params, base_mean, color=col, marker='o', markersize=7, markeredgewidth=0.)
     plt.fill_between(params, base_mean + base_se, base_mean - base_se, alpha=0.15, color=col)
 
     inv_mean, inv_se = inv_loss.mean(0), se(inv_loss, 0)
-    col2 = '#375e82'
-    plt.plot(params, inv_mean, color=col2, marker='.', markersize=7)
+    col2 = '#ff7f0e'
+    plt.plot(params, inv_mean, color=col2, marker='x', markersize=7)
     plt.fill_between(params, inv_mean + inv_se, inv_mean - inv_se, alpha=0.15, color=col2)
 
     plt.xlabel('Transformation strength $s$')

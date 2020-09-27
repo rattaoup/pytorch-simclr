@@ -40,7 +40,6 @@ if __name__ == '__main__':
     plt.plot(epochs, base_mean, color=col, marker='o', markersize=7, markeredgewidth=0.)
     plt.fill_between(epochs, base_mean + base_se, base_mean - base_se, alpha=0.15, color=col)
 
-
     inv_mean, inv_se = inv.mean(0), se(inv, 0)
     col2 = '#ff7f0e'
     plt.plot(epochs, inv_mean, color=col2, marker='x', markersize=7)
