@@ -29,13 +29,13 @@ if __name__ == '__main__':
     invs = ['invgpn-1e-1-1', 'invgpn-1e-1-2', 'invgpn-1e-1-4']
     inv = np.stack([np.array(data[x]) for x in invs])
 
-    plt.figure(figsize=(4.5, 3.5))
+    plt.figure(figsize=(4., 3.5))
 
     epochs = np.array(range(100, 1001, 100))
     base_mean, base_se = baseline.mean(0), se(baseline, 0)
     #col = '#2ba0c4'
     col = '#1f77b4'
-    plt.plot(epochs, base_mean, color=col, marker='o', markersize=7)
+    plt.plot(epochs, base_mean, color=col, marker='o', markersize=7, markeredgewidth=0.)
     plt.fill_between(epochs, base_mean + base_se, base_mean - base_se, alpha=0.15, color=col)
 
     inv_mean, inv_se = inv.mean(0), se(inv, 0)
@@ -46,5 +46,5 @@ if __name__ == '__main__':
     plt.xlabel('Epoch')
     plt.ylabel('Conditional variance')
     plt.legend(['No gradient penalty', 'Gradient penalty'], loc='center right', fontsize=12, frameon=False)
-
+    plt.xticks(epochs[1::2])
     plt.show()
