@@ -19,8 +19,10 @@ parser.add_argument("--num-workers", type=int, default=2, help='Number of thread
 parser.add_argument("--baselines", type=str, default='ckpt', help='File series to load for baseline')
 parser.add_argument("--ours", type=str, default='invgpn', help='File series to load for our method')
 parser.add_argument("--num-passes", default=10, type=int, help='Num samples to compute')
+parser.add_argument("--min-epoch", default=99, type=int, help='First epoch checkpoint to take')
+parser.add_argument("--max-epoch", default=1000, type=int, help='Last epoch checkpoint to take')
+parser.add_argument("--step-epoch", default=100, type=int, help='Spacing between checkpoints')
 args = parser.parse_args()
-
 
 
 def get_loss(fname):
@@ -66,8 +68,7 @@ def get_loss(fname):
 
     batch_transform = batch_transform.to(device)
 
-
-    def compute_trcov(clftrainloader, device, net, target=None):
+    def compute_cond_var(clftrainloader, device, net, target=None):
         if target is None:
             target = device
 
@@ -84,15 +85,17 @@ def get_loss(fname):
                 representation = net(inputs)
                 representation = representation / representation.norm(p=2, dim=-1, keepdim=True)
                 representation = representation.reshape(args.num_passes, B, representation.shape[-1])
-                trcov = representation.var(0).sum(-1)
-                store.append(trcov)
+                representation_proj = representation *(
+                        torch.bernoulli(.5 * torch.ones(*representation.shape, device=device)) * 2 - 1).sum(-1)
+                cond_var = representation_proj.var(0)
+                store.append(cond_var)
 
             trcov_all = torch.cat(store, dim=0)
 
         return trcov_all.mean()
 
 
-    return compute_trcov(testloader, device, net)
+    return compute_cond_var(testloader, device, net)
 
 
 
@@ -100,7 +103,7 @@ baselines = args.baselines.split(",")
 ours = args.ours.split(",")
 results = defaultdict(list)
 for stem in baselines+ours:
-    for epoch in range(9,50,10):
+    for epoch in range(args.min_epoch, args.max_epoch, args.step_epoch):
         fname = stem + '_epoch{:03d}.pth'.format(epoch)
         loss = get_loss(fname)
         results[stem].append(loss)
