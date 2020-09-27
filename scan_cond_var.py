@@ -94,9 +94,7 @@ def get_loss(fname):
 
         return trcov_all.mean()
 
-
     return compute_cond_var(testloader, device, net)
-
 
 
 baselines = args.baselines.split(",")
@@ -106,6 +104,6 @@ for stem in baselines+ours:
     for epoch in range(args.min_epoch, args.max_epoch, args.step_epoch):
         fname = stem + '_epoch{:03d}.pth'.format(epoch)
         loss = get_loss(fname)
-        results[stem].append(loss)
+        results[stem].append(loss.item())
 
 print(results)

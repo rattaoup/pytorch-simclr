@@ -3,7 +3,7 @@ import numpy as np
 
 
 def se(array, axis=0):
-    return array.std(axis=axis) / np.sqrt(array.shape[axis])
+    return 2 * array.std(axis=axis) / np.sqrt(array.shape[axis])
 
 
 if __name__ == '__main__':
@@ -32,22 +32,23 @@ if __name__ == '__main__':
     invs = ['invgpn-1e-1-1', 'invgpn-1e-1-2', 'invgpn-1e-1-4']
     inv = np.stack([np.array(data[x]) for x in invs])
 
-    plt.figure(figsize=(5.5, 3.5))
+    plt.figure(figsize=(4.5, 3.5))
 
     epochs = np.array(range(100, 1001, 100))
     base_mean, base_se = baseline.mean(0), se(baseline, 0)
-    col = '#377e82'
-    plt.plot(epochs, base_mean, color=col, marker='x', markersize=7)
+    col = '#1f77b4'
+    plt.plot(epochs, base_mean, color=col, marker='o', markersize=7, markeredgewidth=0.)
     plt.fill_between(epochs, base_mean + base_se, base_mean - base_se, alpha=0.15, color=col)
 
+
     inv_mean, inv_se = inv.mean(0), se(inv, 0)
-    col2 = '#375e82'
-    plt.plot(epochs, inv_mean, color=col2, marker='.', markersize=7)
+    col2 = '#ff7f0e'
+    plt.plot(epochs, inv_mean, color=col2, marker='x', markersize=7)
     plt.fill_between(epochs, inv_mean + inv_se, inv_mean - inv_se, alpha=0.15, color=col2)
 
     plt.hlines(y=0.04083, xmin=100, xmax=1000, color='k', linestyle='--')
     plt.xlabel('Epoch')
     plt.ylabel('Test squared error loss')
-    plt.legend(['No gradient penalty', 'Gradient penalty'], loc='center left', fontsize=12, frameon=False)
-
+    plt.legend(['No gradient\npenalty', 'Gradient penalty'], loc='center left', fontsize=12, frameon=False)
+    plt.xticks(epochs[1::2])
     plt.show()
