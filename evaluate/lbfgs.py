@@ -137,3 +137,12 @@ def test_reg(X, y, reg):
     print('Loss: %.5f' % (test_loss))
     return test_loss.item()
 
+def test_reg_component(X, y, reg):
+    criterion = nn.MSELoss()
+    reg.eval()
+    with torch.no_grad():
+        raw_scores = reg(X)
+        loss_list =[]
+        for i in range(raw_scores.size()[1]):
+            loss_list.append(criterion(raw_scores[:,i],y[:,i]))
+    return torch.tensor(loss_list)
