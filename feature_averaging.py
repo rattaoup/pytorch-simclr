@@ -2,6 +2,7 @@
 final classifier.'''
 import torch
 import torch.backends.cudnn as cudnn
+from torchvision import transforms
 
 import math
 import os
@@ -10,7 +11,7 @@ from tqdm import tqdm
 
 from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from models import *
-from configs import get_datasets, get_mean_std
+from configs import get_datasets, get_root, get_mean_std, get_datasets_from_transform
 from evaluate import train_clf, test_matrix
 
 parser = argparse.ArgumentParser(description='Tune regularization coefficient of downstream classifier.')
@@ -21,6 +22,8 @@ parser.add_argument("--min-num-passes", type=int, default=10, help='Min number o
 parser.add_argument("--step-num-passes", type=int, default=2, help='Number of distinct M values to try')
 parser.add_argument("--reg-weight", type=float, default=1e-5, help='Regularization parameter')
 parser.add_argument("--proportion", type=float, default=1., help='Proportion of train data to use')
+parser.add_argument("--no-crop", action='store_true', help="Don't use crops, only feature averaging with colour "
+                                                           "distortion")
 args = parser.parse_args()
 
 # Load checkpoint.
@@ -35,8 +38,15 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Data
 print('==> Preparing data..')
-_, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_datasets(
-    args.dataset, augment_clf_train=True, augment_test=True, train_proportion=args.proportion)
+if args.no_crop:
+    transform = transforms.ToTensor()
+    root = get_root(args.dataset)
+    _, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_datasets_from_transform(
+        args.dataset, root, transform, transform, transform, train_proportion=args.proportion
+    )
+else:
+    _, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_datasets(
+        args.dataset, augment_clf_train=True, augment_test=True, train_proportion=args.proportion)
 
 testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
                                          pin_memory=True)
