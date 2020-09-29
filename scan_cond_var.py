@@ -85,8 +85,9 @@ def get_loss(fname):
                 representation = net(inputs)
                 representation = representation / representation.norm(p=2, dim=-1, keepdim=True)
                 representation = representation.reshape(args.num_passes, B, representation.shape[-1])
-                representation_proj = (representation * \
-                        torch.bernoulli(.5 * torch.ones(*representation.shape, device=device)) * 2 - 1).sum(-1)
+                b = torch.bernoulli(.5 * torch.ones(B, representation.shape[-1], device=representation.device)) * 2 - 1
+                # Use some broadcasting
+                representation_proj = (representation * b).sum(-1)
                 cond_var = representation_proj.var(0)
                 store.append(cond_var)
 
