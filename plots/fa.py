@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def se(array, axis=0):
-    return 2 * array.std(axis=axis) / np.sqrt(array.shape[axis])
+    return array.std(axis=axis) / np.sqrt(array.shape[axis])
 
 if __name__ == '__main__':
     baseline = [(86.61, 0.4277), (93.99, 0.1732), (94.28, 0.1658), (94.24, 0.1633), (94.41, 0.1618), (94.43, 0.1611),

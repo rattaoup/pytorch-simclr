@@ -3,7 +3,7 @@ import numpy as np
 
 
 def se(array, axis=0):
-    return 2 * array.std(axis=axis) / np.sqrt(array.shape[axis])
+    return array.std(axis=axis) / np.sqrt(array.shape[axis])
 
 
 if __name__ == '__main__':
