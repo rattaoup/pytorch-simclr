@@ -10,18 +10,18 @@ def se(array, axis=0):
 if __name__ == '__main__':
     # baselines = ['aam-baseline-1.pth', 'aam-baseline-2.pth', 'aam-baseline-3.pth']
     # invs = ['invgpn-1e-1-1', 'invgpn-1e-1-2', 'invgpn-1e-1-4']
-    baselines = ['aam-cifar100-1', 'aam-cifar100-2']
-    invs = ['invgpn-cifar100-1e-1-1', 'invgpn-cifar100-1e-1-2']
+    baselines = ['aam-cifar100-1', 'aam-cifar100-2', 'aam-cifar100-3']
+    invs = ['invgpn-cifar100-1e-1-1', 'invgpn-cifar100-1e-1-2', 'invgpn-cifar100-1e-1-3']
     baseline_acc = []
     baseline_loss = []
     for bname in baselines:
-        checkpoint = torch.load('checkpoint/resnet50/'+bname+'_epoch899.pth', map_location='cpu')
+        checkpoint = torch.load('checkpoint/resnet50/'+bname+'_epoch999.pth', map_location='cpu')
         baseline_acc.append(checkpoint['results']['test_acc'][-1])
         baseline_loss.append(checkpoint['results']['test_loss'][-1])
     inv_acc = []
     inv_loss = []
     for bname in invs:
-        checkpoint = torch.load('checkpoint/resnet50/' + bname + '_epoch899.pth', map_location='cpu')
+        checkpoint = torch.load('checkpoint/resnet50/' + bname + '_epoch999.pth', map_location='cpu')
         inv_acc.append(checkpoint['results']['test_acc'][-1])
         inv_loss.append(checkpoint['results']['test_loss'][-1])
 
