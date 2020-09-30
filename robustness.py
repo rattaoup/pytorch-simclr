@@ -19,9 +19,9 @@ parser.add_argument("--load-from", type=str, default='ckpt.pth', help='File to l
 parser.add_argument("--num-passes", type=int, default=1, help='Number of passes to average')
 parser.add_argument("--reg-weight", type=float, default=1e-5, help='Regularization parameter')
 parser.add_argument("--proportion", type=float, default=1., help='Proportion of train data to use')
-parser.add_argument("--max-s", type=float, default=2., help='Max colour distortion strength to use')
-parser.add_argument("--min-s", type=float, default=0., help='Min colour distortion strength to use')
-parser.add_argument("--step-s", type=int, default=6, help='Number of steps of colour distortion')
+parser.add_argument("--max-s", type=float, default=0.9, help='Max colour distortion strength to use')
+parser.add_argument("--min-s", type=float, default=1e-5, help='Min colour distortion strength to use')
+parser.add_argument("--step-s", type=int, default=8, help='Number of steps of colour distortion')
 parser.add_argument("--mean-shift", action="store_true", help='Apply mean shift, rather than variance shift')
 args = parser.parse_args()
 
