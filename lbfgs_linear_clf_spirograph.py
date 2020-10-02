@@ -26,14 +26,26 @@ parser.add_argument("--back-upper", type = float, default=0.6, help = 'Upper bou
 parser.add_argument("--fore-shift", type =float, default = 0.0, help ='Shift mean of foreground aug')
 parser.add_argument("--back-shift", type = float, default = 0.0, help = 'Shift mean of background aug')
 parser.add_argument("--fore-shift-upper",type = float, default = 0, help = 'Upper shift mean of foreground aug')
-parser.add_argument("--fore-shift-lower",type = float, default = 0, help = 'Upper shift mean of foreground aug')
+parser.add_argument("--fore-shift-lower",type = float, default = 0, help = 'Lower shift mean of foreground aug')
 parser.add_argument("--back-shift-upper",type = float, default = 0, help = 'Upper shift mean of background aug')
-parser.add_argument("--back-shift-lower",type = float, default = 0, help = 'Upper shift mean of background aug')
+parser.add_argument("--back-shift-lower",type = float, default = 0, help = 'Lower shift mean of background aug')
 parser.add_argument("--h-shift-upper",type = float, default = 0, help = 'Upper shift mean of h aug')
-parser.add_argument("--h-shift-lower",type = float, default = 0, help = 'Upper shift mean of h aug')
+parser.add_argument("--h-shift-lower",type = float, default = 0, help = 'Lower shift mean of h aug')
 parser.add_argument("--fore-num-passes", type=int, default=1, help='Number of shift param to try')
 parser.add_argument("--back-num-passes", type=int, default=1, help='Number of shift param to try')
 parser.add_argument("--h-num-passes", type=int, default=1, help='Number of shift param to try')
+parser.add_argument("--norm-rep", action = 'store_true' ,help = 'Normalise representation h or not')
+
+parser.add_argument("--fore-var-upper",type = float, default = 0, help = 'Upper  var of foreground aug')
+parser.add_argument("--fore-var-lower",type = float, default = 0, help = 'Lower  var of foreground aug')
+parser.add_argument("--fore-var-num-passes", type=int, default=1, help='Number of var fore param to try')
+parser.add_argument("--back-var-upper",type = float, default = 0, help = 'Upper  var of foreground aug')
+parser.add_argument("--back-var-lower",type = float, default = 0, help = 'Lower  var of foreground aug')
+parser.add_argument("--back-var-num-passes", type=int, default=1, help='Number of var fore param to try')
+parser.add_argument("--h-var-upper",type = float, default = 0, help = 'Upper shift var of h aug')
+parser.add_argument("--h-var-lower",type = float, default = 0, help = 'Lower shift var of h aug')
+parser.add_argument("--h-var-num-passes", type=int, default=1, help='Number of var h param to try')
+
 
 
 args = parser.parse_args()
@@ -53,8 +65,8 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Data
 # print('==> Preparing data..')
-def get_loss(fore_shift, back_shift, h_shift):
-    trainset, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_spirograph_dataset(rgb_fore_bounds = (.4 + fore_shift , 1 + fore_shift), rgb_back_bounds=(0 + back_shift, .6 + back_shift), h_bounds = (.5 + h_shift, 2.5+ h_shift), train_proportion=args.proportion)
+def get_loss(fore_shift, back_shift, h_shift, fore_var, h_var, back_var):
+    trainset, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_spirograph_dataset(rgb_fore_bounds = (.4 + fore_shift-fore_var , 1 + fore_shift+fore_var), rgb_back_bounds=(0 + back_shift - back_var, .6 + back_shift+ back_var), h_bounds = (.5 + h_shift-h_var, 2.5+ h_shift+h_var), train_proportion=args.proportion)
 
     testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
                                              pin_memory=True)
@@ -111,6 +123,10 @@ def get_loss(fore_shift, back_shift, h_shift):
     if args.dataset == 'spirograph':
         X,y = encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform)
         X_test, y_test = encode_train_set_spirograph(testloader, device, net, col_distort, batch_transform)
+        if args.norm_rep:
+            X = X / X.norm(p=2, dim=-1, keepdim=True)
+            X_test = X_test / X_test.norm(p=2, dim=-1, keepdim=True)
+
     else:
         X, y = encode_train_set(clftrainloader, device, net)
     for reg_weight in torch.exp(math.log(10) * torch.linspace(args.reg_lower, args.reg_upper, args.num_steps,
@@ -137,21 +153,15 @@ h_list = []
 for fore_shift in torch.linspace(args.fore_shift_lower, args.fore_shift_upper, args.fore_num_passes):
     for back_shift in torch.linspace(args.back_shift_lower, args.back_shift_upper, args.back_num_passes):
         for h_shift in torch.linspace(args.h_shift_lower, args.h_shift_upper, args.h_num_passes):
-            fname = 'fore_shift ' + str(fore_shift) + ', back_shift ' + str(back_shift) + ' h_shift ' + str(h_shift)
-            loss = get_loss(fore_shift, back_shift, h_shift)
-            print(fname)
-            results[fname].append(loss)
-            fore_list.append(fore_shift)
-            back_list.append(back_shift)
-            h_list.append(h_shift)
-            loss_list.append(loss)
+            for fore_var in torch.linspace(args.fore_var_lower, args.fore_var_upper, args.fore_var_num_passes):
+                for h_var in torch.linspace(args.h_var_lower, args.h_var_upper, args.h_var_num_passes):
+                    for back_var in torch.linspace(args.back_var_lower, args.back_var_upper, args.back_var_num_passes):
+                        fname = 'fore_shift ' + str(fore_shift) + ', back_shift ' + str(back_shift) + ' h_shift ' + str(h_shift) + ' fore_var '+ str(fore_var) + ' h_var ' + str(h_var) + ' back_var ' + str(back_var)
+                        loss = get_loss(fore_shift, back_shift, h_shift, fore_var, h_var, back_var)
+                        print(fname)
+                        results[fname].append(loss)
+                        loss_list.append(loss)
 
 print(results)
-print('fore_list')
-print(fore_list)
-print('back_list')
-print(back_list)
-print('h_list')
-print(h_list)
 print('loss_list')
 print(loss_list)
