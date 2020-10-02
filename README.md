@@ -6,10 +6,9 @@ This is a [PyTorch](https://github.com/pytorch/pytorch) implementation of Improv
 ### Data
 We use the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html), [CIFAR-100](https://www.cs.toronto.edu/~kriz/cifar.html) and our a novel Spirograph dataset which is introduced to explore our ideas in the context of a differentiable generative process with multiple downstream tasks. This code also supports [ILSVRC2012](http://image-net.org/challenges/LSVRC/2012/) datasets and [STL-10](https://cs.stanford.edu/~acoates/stl10/).
 
-![sg1](https://github.com/rattaoup/pytorch-simclr/blob/tensor-color/plots/spiro_explanatory.png){ width=50% }
-![sg2](https://github.com/rattaoup/pytorch-simclr/blob/tensor-color/plots/spiro_explanatory_grayscale.png){ width=50% }
-![sg3](https://github.com/rattaoup/pytorch-simclr/blob/tensor-color/plots/spiro_explanatory_colour.png){ width=50% }
-
+![sg1](https://github.com/rattaoup/pytorch-simclr/blob/tensor-color/plots/spiro_explanatory.png| width=100)
+![sg2](https://github.com/rattaoup/pytorch-simclr/blob/tensor-color/plots/spiro_explanatory_grayscale.png| width=100)
+![sg3](https://github.com/rattaoup/pytorch-simclr/blob/tensor-color/plots/spiro_explanatory_colour.png| width=100)
 ### Augmentation
 The following augmentations are used on the training set
  - Random crop and resize. We use `RandomResizedCrop` in PyTorch with cubic interpolation for the resizing.
