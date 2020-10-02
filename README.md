@@ -48,6 +48,10 @@ $ python3 scan_eval_reg_fa.py --baselines output_base --ours output_gp --min-num
 this code will scan over a range of epoch of each checkpointfile, the default range is (100,1000).
 
 #### Robustness
+For CIFAR robustness evaluation, we can run the following command when s control the strength of the colour distortion, the default setting is variance shifting but we can change to mean shift by adding a command `--mean-shift`
+```
+$ python3 robustness.py --load-from output_epoch999.pth --max-s 0.9 --min-s 1e-5 --step-s 8
+```
 For spirograph robustness evaluation, we can run `lbfgs_linear_clf_spirograph.py` with additional command. For example, if we want to shift the distribution of background colour by s for each s in linspace(-0.5, 0.5, 6) we can use the following command
 ```
 $ python3 lbfgs_linear_clf_spirograph.py --load-from sg-gp-0_run1_epoch049.pth --back-var-lower -0.5 --back-var-upper 0.5 --back-var-num-passes 6
