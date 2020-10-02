@@ -1,7 +1,7 @@
 # Reproducing SimCLR in PyTorch
 
 ## Introduction
-This is a[PyTorch](https://github.com/pytorch/pytorch) implementation of Improving Transformation Invariance in Contrastive Representation Learning  
+This is a [PyTorch](https://github.com/pytorch/pytorch) implementation of Improving Transformation Invariance in Contrastive Representation Learning  
  
 ### Data
 We use the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html), [CIFAR-100](https://www.cs.toronto.edu/~kriz/cifar.html) and our a novel Spirograph dataset. This code also supports [ILSVRC2012](http://image-net.org/challenges/LSVRC/2012/) datasets and [STL-10](https://cs.stanford.edu/~acoates/stl10/).
