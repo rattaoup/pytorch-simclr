@@ -99,6 +99,17 @@ To evaluate the trained encoder, use
 $ python3 gradient_linear_clf.py --load-from output.pth --nesterov --num-workers 8
 ```
 
+### Running with Spirograph
+To train an encoder on Spirograph dataset
+```
+$ python3 invariance_by_gradient.py --dataset spirograph --lambda-gp 1e-2 --filename output --gp-upper-limit 1000
+```
+To evaluate the trained encoder on varied nuisance transformations 
+```
+$ python3 lbfgs_linear_clf_spirograph.py --load-from output.pth --h-var-lower -0.5 --h-var-upper 0.5 --h-var-num-passes 6
+$ python3 lbfgs_linear_clf_spirograph.py --load-from output.pth --back-var-lower -0.5 --back-var-upper 0.5 --back-var-num-passes 6
+```
+
 
 ## Outstanding differences with the original paper
  - We do not synchronize the batch norm between multiple GPUs. To use PyTorch's `SyncBatchNorm`, we would need to
@@ -106,6 +117,7 @@ $ python3 gradient_linear_clf.py --load-from output.pth --nesterov --num-workers
  - We not use Gaussian blur for any datasets, including ILSVRC2012.
  - We are not aware of any other discrepancies with the original work, but any correction is more than welcome and 
    should be suggested by opening an Issue in this repo.
+
 
 
 ## Reproduction results
