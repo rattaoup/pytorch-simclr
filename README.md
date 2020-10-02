@@ -4,9 +4,11 @@
 This is a [PyTorch](https://github.com/pytorch/pytorch) implementation of Improving Transformation Invariance in Contrastive Representation Learning  
  
 ### Data
-We use the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html), [CIFAR-100](https://www.cs.toronto.edu/~kriz/cifar.html) and our a novel Spirograph dataset. This code also supports [ILSVRC2012](http://image-net.org/challenges/LSVRC/2012/) datasets and [STL-10](https://cs.stanford.edu/~acoates/stl10/).
+We use the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html), [CIFAR-100](https://www.cs.toronto.edu/~kriz/cifar.html) and our a novel Spirograph dataset which is introduced to explore our ideas in the context of a differentiable generative process with multiple downstream tasks. This code also supports [ILSVRC2012](http://image-net.org/challenges/LSVRC/2012/) datasets and [STL-10](https://cs.stanford.edu/~acoates/stl10/).
 
 ![im:sg](https://github.com/rattaoup/pytorch-simclr/blob/tensor-color/plots/spiro_explanatory.png)
+![im:sg](https://github.com/rattaoup/pytorch-simclr/blob/tensor-color/plots/spiro_explanatory_grayscale.png)
+![im:sg](https://github.com/rattaoup/pytorch-simclr/blob/tensor-color/plots/spiro_explanatory_colour.png)
 
 ### Augmentation
 The following augmentations are used on the training set
