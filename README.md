@@ -1,26 +1,10 @@
 # Reproducing SimCLR in PyTorch
 
 ## Introduction
-This is an *unofficial* [PyTorch](https://github.com/pytorch/pytorch) implementation of the recent
- paper ['A Simple Framework for Contrastive Learning of Visual 
-Representations'](https://arxiv.org/pdf/2002.05709.pdf). The arXiv version of this paper can be cited as
-```
-@article{chen2020simple,
-  title={A simple framework for contrastive learning of visual representations},
-  author={Chen, Ting and Kornblith, Simon and Norouzi, Mohammad and Hinton, Geoffrey},
-  journal={arXiv preprint arXiv:2002.05709},
-  year={2020}
-}
-```
-The focus of this repository is to accurately reproduce the results in the paper using PyTorch. We use the original
-paper and the official [tensorflow repo](https://github.com/google-research/simclr) as our sources.
-
-
-## SimCLR algorithm
+This is a[PyTorch](https://github.com/pytorch/pytorch) implementation of Improving Transformation Invariance in Contrastive Representation Learning  
+ 
 ### Data
-For comparison with the original paper, we use the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) and 
-[ILSVRC2012](http://image-net.org/challenges/LSVRC/2012/) datasets. This PyTorch version also supports 
-[CIFAR-100](https://www.cs.toronto.edu/~kriz/cifar.html) and [STL-10](https://cs.stanford.edu/~acoates/stl10/).
+We use the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html), [CIFAR-100](https://www.cs.toronto.edu/~kriz/cifar.html) and our a novel Spirograph dataset. This code also supports [ILSVRC2012](http://image-net.org/challenges/LSVRC/2012/) datasets and [STL-10](https://cs.stanford.edu/~acoates/stl10/).
 
 ### Augmentation
 The following augmentations are used on the training set
@@ -64,6 +48,7 @@ colour distortion or other augmentations. This is as in the original paper.
 
 
 ## Running the code
+
 ### Requirements
 See `requirements.txt`. Note we require the [torchlars](https://github.com/kakaobrain/torchlars) package.
 
@@ -79,25 +64,27 @@ dataset-paths.json
 }
 ```
 
-### Running with CIFAR-10
+### Training an encoder
 Use the following command to train an encoder from scratch on CIFAR-10
 ```
-$ python3 simclr.py --num-epochs 1000 --cosine-anneal --filename output.pth
+$python3 invariance_by_gradient.py --base-lr 1.5 --num-epochs 1000 --cosine-anneal --arch resnet50 --dataset cifar10 --lambda-gp 1e-2 --filename output
 ```
-To evaluate the trained encoder using L-BFGS across a range of regularization parameters
+to train an encoder on Spirograph dataset
 ```
-$ python3 lbfgs_linear_clf.py --load-from output.pth
+$ python3 invariance_by_gradient.py --base-lr 1.5 --num-epochs 50 --cosine-anneal --test-freq 0 --save-freq 10 --cut-off 50 --arch resnet18 --dataset spirograph --lambda-gp 1e-2 --filename output --gp-upper-limit 1000
+```
+we can set `--lambda-gp 0` to train an encoder with no gradient penalty.
+
+### Evaluating an encoder
+Use the following command to evaluate the trained encoder on a classification task
+```
+$ python3 lbfgs_linear_clf.py --load-from output.pth 
+```
+For the spirograph dataset, use the following to evaluate on generative parameters regression.
+```
+$ python3 lbfgs_linear_clf_spirograph.py --load-from output.pth 
 ```
 
-### Running with ImageNet
-Use the following command to train an encoder from scratch on ILSVRC2012
-```
-$ python3 simclr.py --num-epochs 1000 --cosine-anneal --filename output.pth --test-freq 0 --num-workers 8 --dataset imagenet 
-```
-To evaluate the trained encoder, use
-```
-$ python3 gradient_linear_clf.py --load-from output.pth --nesterov --num-workers 8
-```
 
 
 ## Outstanding differences with the original paper
@@ -106,6 +93,7 @@ $ python3 gradient_linear_clf.py --load-from output.pth --nesterov --num-workers
  - We not use Gaussian blur for any datasets, including ILSVRC2012.
  - We are not aware of any other discrepancies with the original work, but any correction is more than welcome and 
    should be suggested by opening an Issue in this repo.
+
 
 
 ## Reproduction results
