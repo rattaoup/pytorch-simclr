@@ -1,5 +1,4 @@
-# Reproducing SimCLR in PyTorch
-
+# Improving Transformation Invariance in Contrastive Representation Learning 
 ## Introduction
 This is a [PyTorch](https://github.com/pytorch/pytorch) implementation of Improving Transformation Invariance in Contrastive Representation Learning  
  
