@@ -20,7 +20,7 @@ from models import *
 from scheduler import CosineAnnealingWithLinearRampLR
 
 parser = argparse.ArgumentParser(description='PyTorch Contrastive Learning.')
-parser.add_argument('--base-lr', default=0.25, type=float, help='base learning rate, rescaled by batch_size/256')
+parser.add_argument('--base-lr', default=0.03, type=float, help='base learning rate, rescaled by batch_size/256')
 parser.add_argument("--momentum", default=0.9, type=float, help='SGD momentum')
 parser.add_argument('--resume', '-r', type=str, default='', help='resume from checkpoint with this filename')
 parser.add_argument('--dataset', '-d', type=str, default='cifar10', help='dataset',
@@ -39,6 +39,7 @@ parser.add_argument("--save-freq", type=int, default=100, help='Frequency to sav
 parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output file name')
 parser.add_argument("--cut-off", type=int, default=1000, help='last epoch')
 parser.add_argument("--moco_k", type=int, default=2048, help='Cache length for MoCo')
+parser.add_argument("--moco-m", type=float, default=0.99, help='Momentum parameter for MoCo')
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
@@ -53,8 +54,9 @@ clf = None
 print('==> Preparing data..')
 trainset, testset, clftrainset, num_classes, stem = get_datasets(args.dataset)
 
+# drop_last so that the queue works correctly
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,
-                                          num_workers=args.num_workers, pin_memory=True)
+                                          num_workers=args.num_workers, pin_memory=True, drop_last=True)
 testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
                                          pin_memory=True)
 clftrainloader = torch.utils.data.DataLoader(clftrainset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
@@ -83,6 +85,7 @@ net_k = net_k.to(device)
 queue = torch.randn(args.moco_k, net.representation_dim)
 queue = nn.functional.normalize(queue, dim=1)
 queue = queue.to(device)
+ptr = 0
 
 ##############################################################
 # Critic
@@ -123,6 +126,25 @@ batch_transform = ModuleCompose([
         TensorNormalise(*get_mean_std(args.dataset))
     ]).to(device)
 
+@torch.no_grad()
+def momentum_update_key_encoder():
+    for param_q, param_k in zip(net.parameters(), net_k.parameters()):
+        param_k.data = param_k.data * args.moco_m + param_q.data * (1. - args.moco_m)
+    for param_q, param_k in zip(critic.parameters(), critic_k.parameters()):
+        param_k.data = param_k.data * args.moco_m + param_q.data * (1. - args.moco_m)
+
+
+@torch.no_grad()
+def dequeue_and_enqueue(keys):
+    global ptr
+    batch_size = keys.shape[0]
+
+    assert args.moco_k % batch_size == 0  # for simplicity
+
+    # replace the keys at ptr (dequeue and enqueue)
+    queue[:, ptr:ptr + batch_size] = keys.detach()
+    ptr = (ptr + batch_size) % args.moco_k  # move pointer
+
 
 # Training
 def train(epoch):
@@ -135,16 +157,24 @@ def train(epoch):
         x1, x2 = inputs
         x1, x2 = x1.to(device), x2.to(device)
         rn1, rn2 = col_distort.sample_random_numbers(x1.shape, x1.device), col_distort.sample_random_numbers(x2.shape, x2.device)
-        x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2)
-        encoder_optimizer.zero_grad()
-        representation1, representation2 = net(x1), net(x2)
-        raw_scores, pseudotargets = critic(representation1, representation2)
+        x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2).detach()
+
+        # Encode k
+        with torch.no_grad():
+            momentum_update_key_encoder()
+            k = critic_k(net_k((x2)))
+
+        optimizer.zero_grad()
+        q = critic(net(x1))
+
+        raw_scores, pseudotargets = critic_k(q, k, queue)
+        dequeue_and_enqueue(k)
         contrastive_loss = criterion(raw_scores, pseudotargets)
 
         loss_gp = contrastive_loss
 
         loss_gp.backward()
-        encoder_optimizer.step()
+        optimizer.step()
 
         train_total_loss += loss_gp.item()
 

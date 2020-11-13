@@ -42,6 +42,15 @@ class MoCoTwoLayerCritic(nn.Module):
         self.w1 = nn.Linear(latent_dim, latent_dim, bias=False)
         self.relu = nn.ReLU()
         self.w2 = nn.Linear(latent_dim, self.projection_dim, bias=False)
+        self.cossim = nn.CosineSimilarity(dim=-1)
 
-    def forward(self, h):
+    def project(self, h):
         return self.w2(self.relu(self.w1(h)))
+
+    def forward(self, q, k, queue):
+        simqk = self.cossim(q, k).unsqueeze(-1) / self.temperature
+        simqqueue = self.cossim(q.unsqueeze(-2), queue.clone().detach().unsqueeze(-3)) / self.temperature
+        raw_scores = torch.cat([simqk, simqqueue], dim=-1)
+        d = simqk.shape[0]
+        targets = torch.zeros(d, dtype=torch.long, device=raw_scores.device)
+        return raw_scores, targets
