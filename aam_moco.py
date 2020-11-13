@@ -69,20 +69,22 @@ print('==> Building model..')
 ##############################################################
 if args.arch == 'resnet18':
     net = ResNet18(stem=stem)
+    net_k = ResNet18(stem=stem)
 elif args.arch == 'resnet34':
     net = ResNet34(stem=stem)
+    net_k = ResNet34(stem=stem)
 elif args.arch == 'resnet50':
     net = ResNet50(stem=stem)
+    net_k = ResNet50(stem=stem)
 else:
     raise ValueError("Bad architecture specification")
-net_k = net.clone()
 for param_q, param_k in zip(net.parameters(), net_k.parameters()):
     param_k.data.copy_(param_q.data)  # initialize
     param_k.requires_grad = False  # not update by gradient
 
 net = net.to(device)
 net_k = net_k.to(device)
-queue = torch.randn(args.moco_k, net.representation_dim)
+queue = torch.randn(args.moco_k, 128)
 queue = nn.functional.normalize(queue, dim=1)
 queue = queue.to(device)
 ptr = 0
@@ -91,7 +93,7 @@ ptr = 0
 # Critic
 ##############################################################
 critic = MoCoTwoLayerCritic(net.representation_dim, temperature=args.temperature)
-critic_k = critic.clone()
+critic_k = MoCoTwoLayerCritic(net.representation_dim, temperature=args.temperature)
 for param_q, param_k in zip(critic.parameters(), critic_k.parameters()):
     param_k.data.copy_(param_q.data)  # initialize
     param_k.requires_grad = False  # not update by gradient
@@ -142,7 +144,7 @@ def dequeue_and_enqueue(keys):
     assert args.moco_k % batch_size == 0  # for simplicity
 
     # replace the keys at ptr (dequeue and enqueue)
-    queue[:, ptr:ptr + batch_size] = keys.detach()
+    queue[ptr:ptr + batch_size, :] = keys.detach()
     ptr = (ptr + batch_size) % args.moco_k  # move pointer
 
 
@@ -162,10 +164,10 @@ def train(epoch):
         # Encode k
         with torch.no_grad():
             momentum_update_key_encoder()
-            k = critic_k(net_k((x2)))
+            k = critic_k.project(net_k((x2)))
 
         optimizer.zero_grad()
-        q = critic(net(x1))
+        q = critic.project(net(x1))
 
         raw_scores, pseudotargets = critic_k(q, k, queue)
         dequeue_and_enqueue(k)
