@@ -2,10 +2,10 @@ import torch
 from torch import nn
 
 
-class LinearCritic(nn.Module):
+class TwoLayerCritic(nn.Module):
 
     def __init__(self, latent_dim, temperature=1.):
-        super(LinearCritic, self).__init__()
+        super(TwoLayerCritic, self).__init__()
         self.temperature = temperature
         self.projection_dim = 128
         self.w1 = nn.Linear(latent_dim, latent_dim, bias=False)
@@ -31,3 +31,17 @@ class LinearCritic(nn.Module):
         raw_scores = torch.cat([raw_scores1, raw_scores2], dim=-2)
         targets = torch.arange(2 * d, dtype=torch.long, device=raw_scores.device)
         return raw_scores, targets
+
+
+class MoCoTwoLayerCritic(nn.Module):
+
+    def __init__(self, latent_dim, temperature=1.):
+        super(MoCoTwoLayerCritic, self).__init__()
+        self.temperature = temperature
+        self.projection_dim = 128
+        self.w1 = nn.Linear(latent_dim, latent_dim, bias=False)
+        self.relu = nn.ReLU()
+        self.w2 = nn.Linear(latent_dim, self.projection_dim, bias=False)
+
+    def forward(self, h):
+        return self.w2(self.relu(self.w1(h)))

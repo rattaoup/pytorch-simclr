@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from configs import get_datasets, get_mean_std
-from critic import LinearCritic
+from critic import TwoLayerCritic
 from evaluate import save_checkpoint, encode_train_set, train_clf, test
 from models import *
 from scheduler import CosineAnnealingWithLinearRampLR
@@ -78,7 +78,7 @@ net = net.to(device)
 ##############################################################
 # Critic
 ##############################################################
-critic = LinearCritic(net.representation_dim, temperature=args.temperature).to(device)
+critic = TwoLayerCritic(net.representation_dim, temperature=args.temperature).to(device)
 
 if device == 'cuda':
     repr_dim = net.representation_dim

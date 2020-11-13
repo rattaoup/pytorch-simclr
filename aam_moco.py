@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from configs import get_datasets, get_mean_std
-from critic import TwoLayerCritic
+from critic import MoCoTwoLayerCritic
 from evaluate import save_checkpoint, encode_train_set, train_clf, test
 from models import *
 from scheduler import CosineAnnealingWithLinearRampLR
@@ -38,6 +38,7 @@ parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit 
 parser.add_argument("--save-freq", type=int, default=100, help='Frequency to save checkpoints.')
 parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output file name')
 parser.add_argument("--cut-off", type=int, default=1000, help='last epoch')
+parser.add_argument("--moco_k", type=int, default=2048, help='Cache length for MoCo')
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
@@ -72,38 +73,48 @@ elif args.arch == 'resnet50':
     net = ResNet50(stem=stem)
 else:
     raise ValueError("Bad architecture specification")
+net_k = net.clone()
+for param_q, param_k in zip(net.parameters(), net_k.parameters()):
+    param_k.data.copy_(param_q.data)  # initialize
+    param_k.requires_grad = False  # not update by gradient
+
 net = net.to(device)
+net_k = net_k.to(device)
+queue = torch.randn(args.moco_k, net.representation_dim)
+queue = nn.functional.normalize(queue, dim=1)
+queue = queue.to(device)
 
 ##############################################################
 # Critic
 ##############################################################
-critic = TwoLayerCritic(net.representation_dim, temperature=args.temperature).to(device)
+critic = MoCoTwoLayerCritic(net.representation_dim, temperature=args.temperature)
+critic_k = critic.clone()
+for param_q, param_k in zip(critic.parameters(), critic_k.parameters()):
+    param_k.data.copy_(param_q.data)  # initialize
+    param_k.requires_grad = False  # not update by gradient
+critic = critic.to(device)
+critic_k = critic_k.to(device)
 
 if device == 'cuda':
     repr_dim = net.representation_dim
     net = torch.nn.DataParallel(net)
+    net_k = torch.nn.DataParallel(net_k)
     net.representation_dim = repr_dim
+    net_k.representation_dim = repr_dim
     cudnn.benchmark = True
 
 criterion = nn.CrossEntropyLoss()
-base_optimizer = optim.SGD(list(net.parameters()) + list(critic.parameters()), lr=args.lr, weight_decay=1e-6,
-                           momentum=args.momentum)
+optimizer = optim.SGD(list(net.parameters()) + list(critic.parameters()), lr=args.lr, weight_decay=1e-6,
+                       momentum=args.momentum)
 if args.cosine_anneal:
-    scheduler = CosineAnnealingWithLinearRampLR(base_optimizer, args.num_epochs)
-encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
+    scheduler = CosineAnnealingWithLinearRampLR(optimizer, args.num_epochs)
+# MoCo does not use LARS
+# encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
 
 
 if args.resume:
-    # Load checkpoint.
-    print('==> Resuming from checkpoint..')
-    assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    resume_from = os.path.join('./checkpoint', args.resume)
-    checkpoint = torch.load(resume_from)
-    net.load_state_dict(checkpoint['net'])
-    critic.load_state_dict(checkpoint['critic'])
-    results = checkpoint['results']
-    start_epoch = checkpoint['epoch']+1
-    scheduler.step(start_epoch)
+    print("Resuming not support for MoCo")
+    raise SystemExit
 
 
 col_distort = ColourDistortion(s=0.5)
