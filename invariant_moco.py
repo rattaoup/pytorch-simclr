@@ -26,6 +26,7 @@ parser.add_argument('--resume', '-r', type=str, default='', help='resume from ch
 parser.add_argument('--dataset', '-d', type=str, default='cifar10', help='dataset',
                     choices=['cifar10', 'cifar100', 'stl10', 'imagenet'])
 parser.add_argument('--temperature', type=float, default=0.5, help='InfoNCE temperature')
+parser.add_argument('--lambda-gp', type=float, default=0., help='Gradient penalty')
 parser.add_argument("--batch-size", type=int, default=512, help='Training batch size')
 parser.add_argument("--num-epochs", type=int, default=100, help='Number of training epochs')
 parser.add_argument("--cosine-anneal", action='store_true', help="Use cosine annealing on the learning rate")
@@ -193,10 +194,6 @@ def train(epoch):
 
         loss_gp.backward()
         optimizer.step()
-
-        train_total_loss += loss_gp.item()
-
-        t.set_description('Loss: %.3f' % (train_total_loss / (batch_idx + 1)))
 
         train_contrastive_loss += contrastive_loss.item()
         train_gradient_penalty += gradient_penalty.item()
