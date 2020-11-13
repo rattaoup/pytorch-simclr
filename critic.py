@@ -40,12 +40,14 @@ class MoCoTwoLayerCritic(nn.Module):
         self.temperature = temperature
         self.projection_dim = 128
         self.w1 = nn.Linear(latent_dim, latent_dim, bias=False)
+        self.bn1 = nn.BatchNorm1d(latent_dim)
         self.relu = nn.ReLU()
         self.w2 = nn.Linear(latent_dim, self.projection_dim, bias=False)
+        self.bn2 = nn.BatchNorm1d(self.projection_dim, affine=False)
         self.cossim = nn.CosineSimilarity(dim=-1)
 
     def project(self, h):
-        return self.w2(self.relu(self.w1(h)))
+        return self.bn2(self.w2(self.relu(self.bn1(self.w1(h)))))
 
     def forward(self, q, k, queue):
         simqk = self.cossim(q, k).unsqueeze(-1) / self.temperature
