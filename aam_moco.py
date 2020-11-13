@@ -38,8 +38,9 @@ parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit 
 parser.add_argument("--save-freq", type=int, default=100, help='Frequency to save checkpoints.')
 parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output file name')
 parser.add_argument("--cut-off", type=int, default=1000, help='last epoch')
-parser.add_argument("--moco_k", type=int, default=2048, help='Cache length for MoCo')
+parser.add_argument("--moco-k", type=int, default=2048, help='Cache length for MoCo')
 parser.add_argument("--moco-m", type=float, default=0.99, help='Momentum parameter for MoCo')
+parser.add_argument("--critic-bn", action='store_true', help='Use batch normalization in critic')
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
@@ -92,8 +93,8 @@ ptr = 0
 ##############################################################
 # Critic
 ##############################################################
-critic = MoCoTwoLayerCritic(net.representation_dim, temperature=args.temperature)
-critic_k = MoCoTwoLayerCritic(net.representation_dim, temperature=args.temperature)
+critic = MoCoTwoLayerCritic(net.representation_dim, temperature=args.temperature, bn=args.critic_bn)
+critic_k = MoCoTwoLayerCritic(net.representation_dim, temperature=args.temperature, bn=args.critic_bn)
 for param_q, param_k in zip(critic.parameters(), critic_k.parameters()):
     param_k.data.copy_(param_q.data)  # initialize
     param_k.requires_grad = False  # not update by gradient
