@@ -3,15 +3,14 @@ final classifier.'''
 import torch
 import torch.backends.cudnn as cudnn
 from torchvision import transforms
+import torch.nn as nn
 
-import math
 import os
 import argparse
 from tqdm import tqdm
 
-from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from models import *
-from configs import get_datasets, get_root, get_mean_std, get_datasets_from_transform
+from configs import get_datasets, get_root, get_datasets_from_transform
 from evaluate import train_clf, test_matrix
 import torch.optim as optim
 
@@ -107,50 +106,49 @@ def encode_feature_averaging(clftrainloader, device, net, target=None, num_passe
 
     return X, y
 
-def train_clf_ensemble(X, y, representation_dim, num_classes, device, reg_weight=1e-3):
-    print('\nL2 Regularization weight: %g' % reg_weight)
 
-    criterion = nn.CrossEntropyLoss()
-    softmax = nn.Softmax()
-    nllloss = nn.NLLLoss()
-    n_lbfgs_steps = 500
+# def train_clf_augment(X, y, representation_dim, num_classes, device, reg_weight=1e-3):
+#     print('\nL2 Regularization weight: %g' % reg_weight)
+#
+#     criterion = nn.CrossEntropyLoss()
+#     n_lbfgs_steps = 100
+#
+#     # Should be reset after each epoch for a completely independent evaluation
+#     clf = nn.Linear(representation_dim, num_classes).to(device)
+#     clf_optimizer = optim.LBFGS(clf.parameters())
+#     clf.train()
+#
+#     t = tqdm(range(n_lbfgs_steps), desc='Loss: **** | Train Acc: ****% ', bar_format='{desc}{bar}{r_bar}')
+#     for _ in t:
+#         def closure():
+#             clf_optimizer.zero_grad()
+#
+#             prob_list = []
+#             for i in range(X.shape[0]):
+#                 prob_list.append(softmax(clf(X[i])))
+#
+#
+#             raw_scores = (torch.stack(prob_list)).mean(dim = 0).log()
+#
+#             loss = nllloss(raw_scores, y)
+#
+#             loss += reg_weight * clf.weight.pow(2).sum()
+#             loss.backward()
+#
+#             _, predicted = raw_scores.max(1)
+#             correct = predicted.eq(y).sum().item()
+#
+#             t.set_description('Loss: %.3f | Train Acc: %.3f%% ' % (loss, 100. * correct / y.shape[0]))
+#
+#             return loss
+#
+#         clf_optimizer.step(closure)
+#
+#     return clf
 
-    # Should be reset after each epoch for a completely independent evaluation
-    clf = nn.Linear(representation_dim, num_classes).to(device)
-    clf_optimizer = optim.LBFGS(clf.parameters())
-    clf.train()
-
-    t = tqdm(range(n_lbfgs_steps), desc='Loss: **** | Train Acc: ****% ', bar_format='{desc}{bar}{r_bar}')
-    for _ in t:
-        def closure():
-            clf_optimizer.zero_grad()
-
-            prob_list = []
-            for i in range(X.shape[0]):
-                prob_list.append(softmax(clf(X[i])))
-
-
-            raw_scores = (torch.stack(prob_list)).mean(dim = 0).log()
-
-            loss = nllloss(raw_scores, y)
-
-            loss += reg_weight * clf.weight.pow(2).sum()
-            loss.backward()
-
-            _, predicted = raw_scores.max(1)
-            correct = predicted.eq(y).sum().item()
-
-            t.set_description('Loss: %.3f | Train Acc: %.3f%% ' % (loss, 100. * correct / y.shape[0]))
-
-            return loss
-
-        clf_optimizer.step(closure)
-
-    return clf
 
 def test_matrix_ensemble(X, y, clf):
-    criterion = nn.CrossEntropyLoss()
-    softmax = nn.Softmax()
+    softmax = nn.Softmax(dim=-1)
     nllloss = nn.NLLLoss()
     clf.eval()
     with torch.no_grad():
@@ -158,7 +156,7 @@ def test_matrix_ensemble(X, y, clf):
         for i in range(X.shape[0]):
             prob_list.append(softmax(clf(X[i])))
 
-        raw_scores = (torch.stack(prob_list)).mean(dim = 0).log()
+        raw_scores = (torch.stack(prob_list)).mean(dim=0).log()
         test_clf_loss = nllloss(raw_scores, y)
 
         _, predicted = raw_scores.max(1)
@@ -168,6 +166,7 @@ def test_matrix_ensemble(X, y, clf):
     print('Loss: %.3f | Test Acc: %.3f%%' % (test_clf_loss, acc))
     return acc, test_clf_loss
 
+
 results = []
 results_ensemble = []
 X, y = encode_feature_averaging(clftrainloader, device, net, num_passes=args.max_num_passes, target='cpu')
@@ -175,17 +174,17 @@ X_test, y_test = encode_feature_averaging(testloader, device, net, num_passes=ar
 for m in torch.linspace(args.min_num_passes, args.max_num_passes, args.step_num_passes):
     m = int(m)
     print("FA with M =", m)
-#     X_this = X[:m, ...].mean(0)
-#     X_test_this = X_test[:m, ...].mean(0)
 
     # ensemble
-    X_this = X[:m, ...]
-    X_test_this = X_test[:m, ...]
-    clf_ensemble = train_clf_ensemble(X_this.to(device), y.to(device), net.representation_dim, num_classes, device, reg_weight=args.reg_weight)
+    X_this = X[:m, ...].reshape(m * X.shape[1], X.shape[2])
+    X_test_this = X_test[:m, ...].reshape(m * X_test.shape[1], X_test.shape[2])
+    y_this = y.repeat(m)
+    clf_ensemble = train_clf(X_this, y_this, net.representation_dim, num_classes, 'cpu', reg_weight=args.reg_weight,
+                             n_lbfgs_steps=50)
     acc, loss = test_matrix_ensemble(X_test_this.to(device), y_test.to(device), clf_ensemble)
     results_ensemble.append((acc,loss))
 
-    #normal
+    # normal
     X_this = X[:m, ...].mean(0)
     X_test_this = X_test[:m, ...].mean(0)
     clf = train_clf(X_this.to(device), y.to(device), net.representation_dim, num_classes, device, reg_weight=args.reg_weight)
@@ -193,5 +192,5 @@ for m in torch.linspace(args.min_num_passes, args.max_num_passes, args.step_num_
     results.append((acc,loss))
 
 
-my_dict = {'fa':results, 'ensemble':results_ensemble}
+my_dict = {'fa': results, 'ensemble': results_ensemble}
 print(my_dict)

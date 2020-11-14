@@ -23,11 +23,10 @@ def encode_train_set(clftrainloader, device, net):
     return X, y
 
 
-def train_clf(X, y, representation_dim, num_classes, device, reg_weight=1e-3):
+def train_clf(X, y, representation_dim, num_classes, device, reg_weight=1e-3, n_lbfgs_steps=500):
     print('\nL2 Regularization weight: %g' % reg_weight)
 
     criterion = nn.CrossEntropyLoss()
-    n_lbfgs_steps = 500
 
     # Should be reset after each epoch for a completely independent evaluation
     clf = nn.Linear(representation_dim, num_classes).to(device)
