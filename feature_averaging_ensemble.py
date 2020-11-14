@@ -111,7 +111,7 @@ def train_clf_ensemble(X, y, representation_dim, num_classes, device, reg_weight
     print('\nL2 Regularization weight: %g' % reg_weight)
 
     criterion = nn.CrossEntropyLoss()
-    softmax = nn.LogSoftmax()
+    softmax = nn.Softmax()
     nllloss = nn.NLLLoss()
     n_lbfgs_steps = 500
 
@@ -130,7 +130,7 @@ def train_clf_ensemble(X, y, representation_dim, num_classes, device, reg_weight
                 prob_list.append(softmax(clf(X[i])))
 
 
-            raw_scores = (torch.stack(prob_list)).mean(dim = 0)
+            raw_scores = (torch.stack(prob_list)).mean(dim = 0).log()
 
             loss = nllloss(raw_scores, y)
 
@@ -150,7 +150,7 @@ def train_clf_ensemble(X, y, representation_dim, num_classes, device, reg_weight
 
 def test_matrix_ensemble(X, y, clf):
     criterion = nn.CrossEntropyLoss()
-    softmax = nn.LogSoftmax()
+    softmax = nn.Softmax()
     nllloss = nn.NLLLoss()
     clf.eval()
     with torch.no_grad():
@@ -158,7 +158,7 @@ def test_matrix_ensemble(X, y, clf):
         for i in range(X.shape[0]):
             prob_list.append(softmax(clf(X[i])))
 
-        raw_scores = (torch.stack(prob_list)).mean(dim = 0)
+        raw_scores = (torch.stack(prob_list)).mean(dim = 0).log()
         test_clf_loss = nllloss(raw_scores, y)
 
         _, predicted = raw_scores.max(1)
