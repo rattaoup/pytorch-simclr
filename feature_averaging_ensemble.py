@@ -177,11 +177,11 @@ for m in torch.linspace(args.min_num_passes, args.max_num_passes, args.step_num_
 
     # ensemble
     X_this = X[:m, ...].reshape(m * X.shape[1], X.shape[2])
-    X_test_this = X_test[:m, ...].reshape(m * X_test.shape[1], X_test.shape[2])
+    X_test_this = X_test[:m, ...]
     y_this = y.repeat(m)
     clf_ensemble = train_clf(X_this, y_this, net.representation_dim, num_classes, 'cpu', reg_weight=args.reg_weight,
                              n_lbfgs_steps=50)
-    acc, loss = test_matrix_ensemble(X_test_this.to(device), y_test.to(device), clf_ensemble)
+    acc, loss = test_matrix_ensemble(X_test_this, y_test, clf_ensemble)
     results_ensemble.append((acc,loss))
 
     # normal
