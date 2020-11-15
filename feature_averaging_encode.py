@@ -18,6 +18,7 @@ parser = argparse.ArgumentParser(description='Tune regularization coefficient of
 parser.add_argument("--num-workers", type=int, default=2, help='Number of threads for data loaders')
 parser.add_argument("--load-from", type=str, default='ckpt.pth', help='File to load from')
 parser.add_argument("--max-num-passes", type=int, default=20, help='Max number of passes to average')
+parser.add_argument("--proportion", type=float, default=1., help='Proportion of train data to use')
 parser.add_argument("--no-crop", action='store_true', help="Don't use crops, only feature averaging with colour "
                                                            "distortion")
 args = parser.parse_args()
