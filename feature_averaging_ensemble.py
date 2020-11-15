@@ -107,46 +107,6 @@ def encode_feature_averaging(clftrainloader, device, net, target=None, num_passe
     return X, y
 
 
-# def train_clf_augment(X, y, representation_dim, num_classes, device, reg_weight=1e-3):
-#     print('\nL2 Regularization weight: %g' % reg_weight)
-#
-#     criterion = nn.CrossEntropyLoss()
-#     n_lbfgs_steps = 100
-#
-#     # Should be reset after each epoch for a completely independent evaluation
-#     clf = nn.Linear(representation_dim, num_classes).to(device)
-#     clf_optimizer = optim.LBFGS(clf.parameters())
-#     clf.train()
-#
-#     t = tqdm(range(n_lbfgs_steps), desc='Loss: **** | Train Acc: ****% ', bar_format='{desc}{bar}{r_bar}')
-#     for _ in t:
-#         def closure():
-#             clf_optimizer.zero_grad()
-#
-#             prob_list = []
-#             for i in range(X.shape[0]):
-#                 prob_list.append(softmax(clf(X[i])))
-#
-#
-#             raw_scores = (torch.stack(prob_list)).mean(dim = 0).log()
-#
-#             loss = nllloss(raw_scores, y)
-#
-#             loss += reg_weight * clf.weight.pow(2).sum()
-#             loss.backward()
-#
-#             _, predicted = raw_scores.max(1)
-#             correct = predicted.eq(y).sum().item()
-#
-#             t.set_description('Loss: %.3f | Train Acc: %.3f%% ' % (loss, 100. * correct / y.shape[0]))
-#
-#             return loss
-#
-#         clf_optimizer.step(closure)
-#
-#     return clf
-
-
 def test_matrix_ensemble(X, y, clf):
     softmax = nn.Softmax(dim=-1)
     nllloss = nn.NLLLoss()
