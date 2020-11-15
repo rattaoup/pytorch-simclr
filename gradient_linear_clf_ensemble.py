@@ -110,7 +110,7 @@ def test_ensemble(m):
     softmax = nn.Softmax(dim=-1)
     net.eval()
     clf.eval()
-    predictions = torch.zeros(len(testset), num_classes)
+    predictions = torch.zeros(len(testset), num_classes, device=device)
     y = []
     with torch.no_grad():
         for i in range(m):
@@ -141,9 +141,9 @@ def test_ensemble(m):
 results = {}
 for epoch in range(args.num_epochs):
     train_clf(epoch)
-    for m in torch.linspace(args.min_num_passes, args.max_num_passes, args.step_num_passes):
-        m = int(m)
-        print("Ensemble with M =", m)
-        acc, loss = test_ensemble(m)
-        results[m] = (acc, loss)
+for m in torch.linspace(args.min_num_passes, args.max_num_passes, args.step_num_passes):
+    m = int(m)
+    print("Ensemble with M =", m)
+    acc, loss = test_ensemble(m)
+    results[m] = (acc, loss)
 print(results)
