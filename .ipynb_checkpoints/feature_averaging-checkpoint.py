@@ -1,25 +1,29 @@
-'''This script tunes the L2 reg weight of the final classifier.'''
-import argparse
-import os
-import math
-
+'''Train CIFAR10/100 with PyTorch using standard Contrastive Learning. This script tunes the L2 reg weight of the
+final classifier.'''
 import torch
 import torch.backends.cudnn as cudnn
+from torchvision import transforms
 
-from configs import get_datasets
-from evaluate import encode_train_set, train_clf, test, test_matrix
+import math
+import os
+import argparse
 from tqdm import tqdm
+
+from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from models import *
+from configs import get_datasets, get_root, get_mean_std, get_datasets_from_transform
+from evaluate import train_clf, test_matrix
 
 parser = argparse.ArgumentParser(description='Tune regularization coefficient of downstream classifier.')
 parser.add_argument("--num-workers", type=int, default=2, help='Number of threads for data loaders')
 parser.add_argument("--load-from", type=str, default='ckpt.pth', help='File to load from')
-parser.add_argument("--reg-lower", type=float, default=-5, help='Minimum log regularization parameter (base 10)')
-parser.add_argument("--reg-upper", type=float, default=-5, help='Maximum log regularization parameter (base 10)')
-parser.add_argument("--num-steps", type=int, default=1, help='Number of log-linearly spaced reg parameters to try')
+parser.add_argument("--max-num-passes", type=int, default=20, help='Max number of passes to average')
+parser.add_argument("--min-num-passes", type=int, default=10, help='Min number of passes to average')
+parser.add_argument("--step-num-passes", type=int, default=2, help='Number of distinct M values to try')
+parser.add_argument("--reg-weight", type=float, default=1e-5, help='Regularization parameter')
 parser.add_argument("--proportion", type=float, default=1., help='Proportion of train data to use')
-parser.add_argument("--s", type = float, default=0.5, help = 'Distribution for colour augmentation')
-parser.add_argument("--augment-test", action='store_true', help="If true, apply crop/ random flip to train/test dataset")
+parser.add_argument("--no-crop", action='store_true', help="Don't use crops, only feature averaging with colour "
+                                                           "distortion")
 args = parser.parse_args()
 
 # Load checkpoint.
@@ -32,13 +36,17 @@ args.arch = checkpoint['args']['arch']
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-
 # Data
 print('==> Preparing data..')
-trainset, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_datasets(args.dataset, train_proportion=args.proportion,
-                                                                                               augment_clf_train=args.augment_test,
-                                                                                               augment_test=args.augment_test,
-                                                                                               s =0.5)
+if args.no_crop:
+    transform = transforms.ToTensor()
+    root = get_root(args.dataset)
+    _, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_datasets_from_transform(
+        args.dataset, root, transform, transform, transform, train_proportion=args.proportion
+    )
+else:
+    _, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_datasets(
+        args.dataset, augment_clf_train=True, augment_test=True, train_proportion=args.proportion)
 
 testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
                                          pin_memory=True)
@@ -97,28 +105,18 @@ def encode_feature_averaging(clftrainloader, device, net, target=None, num_passe
     X = torch.stack(X, dim=0)
 
     return X, y
-
-best_acc = 0
-
-if args.augment_test: 
-    X, y = encode_feature_averaging(clftrainloader, device, net, num_passes=1)
-    X_test, y_test = encode_feature_averaging(testloader, device, net, num_passes=1)
     
-    for reg_weight in torch.exp(math.log(10) * torch.linspace(args.reg_lower, args.reg_upper, args.num_steps,
-                                                                  dtype=torch.float, device=device)):
-        clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=reg_weight)
-        acc, loss = test_matrix(X_test, y_test, clf)
-        if acc > best_acc:
-            best_acc = acc
-    print("Best test accuracy", best_acc, "%")
 
-    
-else:
-    X, y = encode_train_set(clftrainloader, device, net)
-    for reg_weight in torch.exp(math.log(10) * torch.linspace(args.reg_lower, args.reg_upper, args.num_steps,
-                                                                  dtype=torch.float, device=device)):
-        clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=reg_weight)
-        acc, loss = test(testloader, device, net, clf)
-        if acc > best_acc:
-            best_acc = acc
-    print("Best test accuracy", best_acc, "%")
+results = []
+X, y = encode_feature_averaging(clftrainloader, device, net, num_passes=args.max_num_passes, target='cpu')
+X_test, y_test = encode_feature_averaging(testloader, device, net, num_passes=args.max_num_passes, target='cpu')
+for m in torch.linspace(args.min_num_passes, args.max_num_passes, args.step_num_passes):
+    m = int(m)
+    print("FA with M =", m)
+    X_this = X[:m, ...].mean(0)
+    X_test_this = X_test[:m, ...].mean(0)
+    clf = train_clf(X_this.to(device), y.to(device), net.representation_dim, num_classes, device, reg_weight=args.reg_weight)
+    acc, loss = test_matrix(X_test_this.to(device), y_test.to(device), clf)
+    results.append((acc,loss))
+print(results)
+
