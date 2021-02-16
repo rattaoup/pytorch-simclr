@@ -23,11 +23,10 @@ def encode_train_set(clftrainloader, device, net):
     return X, y
 
 
-def train_clf(X, y, representation_dim, num_classes, device, reg_weight=1e-3):
+def train_clf(X, y, representation_dim, num_classes, device, reg_weight=1e-3, n_lbfgs_steps=500):
     print('\nL2 Regularization weight: %g' % reg_weight)
 
     criterion = nn.CrossEntropyLoss()
-    n_lbfgs_steps = 500
 
     # Should be reset after each epoch for a completely independent evaluation
     clf = nn.Linear(representation_dim, num_classes).to(device)
@@ -95,7 +94,7 @@ def test_matrix(X, y, clf):
 
     acc = 100. * correct / y.shape[0]
     print('Loss: %.3f | Test Acc: %.3f%%' % (test_clf_loss, acc))
-    return acc, test_clf_loss
+    return acc, test_clf_loss.item()
 
 
 def train_reg(X, y, device, reg_weight=1e-3):
@@ -137,6 +136,7 @@ def test_reg(X, y, reg):
     print('Loss: %.5f' % (test_loss))
     return test_loss.item()
 
+
 def test_reg_component(X, y, reg):
     criterion = nn.MSELoss()
     reg.eval()
@@ -146,4 +146,3 @@ def test_reg_component(X, y, reg):
         for i in range(raw_scores.size()[1]):
             loss_list.append(criterion(raw_scores[:,i],y[:,i]))
     return torch.tensor(loss_list)
-
