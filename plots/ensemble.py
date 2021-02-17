@@ -29,6 +29,21 @@ if __name__ == '__main__':
                      (94.75, 0.2367), (94.77, 0.2369), (94.72, 0.2368), (94.72, 0.2367), (94.77, 0.2365)]
                    ]
 
+    cifar10_base = [
+        [(93.47, 0.1958623081445694), (94.36, 0.16706432402133942), (94.41, 0.16388462483882904),
+         (94.49, 0.16236217319965363), (94.56, 0.1612444818019867), (94.65, 0.16010713577270508),
+         (94.56, 0.15985429286956787), (94.53, 0.15996643900871277), (94.51, 0.15953053534030914),
+         (94.58, 0.15934737026691437)],
+        [(93.46, 0.19429568946361542), (94.24, 0.16980035603046417), (94.42, 0.1646382063627243),
+         (94.64, 0.16256791353225708), (94.58, 0.16126218438148499), (94.63, 0.16036824882030487),
+         (94.75, 0.15990084409713745), (94.76, 0.15909987688064575), (94.68, 0.15903064608573914),
+         (94.62, 0.15868017077445984)],
+        [(93.31, 0.19524863362312317), (94.17, 0.17107221484184265), (94.31, 0.16376088559627533),
+         (94.48, 0.16253380477428436), (94.54, 0.16132250428199768), (94.56, 0.16071796417236328),
+         (94.55, 0.16038447618484497), (94.61, 0.1599552184343338), (94.61, 0.15996932983398438),
+         (94.59, 0.1597975790500641)]
+    ]
+
     no_gp = [{
         'fa': [(93.29, 0.1928812712430954), (94.28, 0.1681467741727829), (94.53, 0.16364863514900208), (94.65, 0.16164171695709229), (94.51, 0.16176356375217438), (94.59, 0.161569744348526), (94.63, 0.16096344590187073), (94.61, 0.16113333404064178), (94.66, 0.16045020520687103), (94.68, 0.16003276407718658)],
         'ensemble': [(93.65, 0.2570), (94.44, 0.2470), (94.58, 0.2450), (94.56, 0.2440), (94.61, 0.2438), (94.64, 0.2436), (94.72, 0.2437), (94.73, 0.2438), (94.73, 0.2435), (94.7, 0.2433)]
@@ -43,34 +58,34 @@ if __name__ == '__main__':
             }
     ]
 
-    plt.figure(figsize=(3.5, 2.5))
+    plt.figure(figsize=(4, 2))
 
     m = np.linspace(5, 100, 10)
 
     ## Plot the accuracy
     i = 1
     acc_fa_gp = np.array([[x[i] for x in a] for a in gp_fa])
-    acc_fa_base = np.array([[x[i] for x in a['fa']] for a in no_gp])
+    acc_fa_base = np.array([[x[i] for x in a] for a in cifar10_base])
     acc_ensemble_gp = np.array([[x[i] for x in a] for a in gp_ensemble])
     acc_ensemble_base = np.array([[x[i] for x in a['ensemble']] for a in no_gp])
 
-    # col = '#1f77b4'
-    # mean, s = acc_fa_base.mean(0), se(acc_fa_base)
-    # plt.plot(m, mean, color=col, marker='o', markersize=7, markeredgewidth=0.)
-    # plt.fill_between(m, mean + s, mean - s, alpha=0.15, color=col)
-    # col = 'tab:olive'
-    # mean, s = acc_ensemble_base.mean(0), se(acc_ensemble_base)
-    # plt.plot(m, mean, color=col, marker='*', markersize=7, markeredgewidth=0., linestyle='--')
-    # plt.fill_between(m, mean + s, mean - s, alpha=0.15, color=col)
+    col = '#1f77b4'
+    mean, s = acc_fa_base.mean(0), se(acc_fa_base)
+    plt.plot(m, mean, color=col, marker='o', markersize=7, markeredgewidth=0.)
+    plt.fill_between(m, mean + s, mean - s, alpha=0.15, color=col)
+    col = 'tab:olive'
+    mean, s = acc_ensemble_base.mean(0), se(acc_ensemble_base)
+    plt.plot(m, mean, color=col, marker='*', markersize=7, markeredgewidth=0., linestyle='--')
+    plt.fill_between(m, mean + s, mean - s, alpha=0.15, color=col)
 
-    col = 'tab:orange'
-    mean, s = acc_fa_gp.mean(0), se(acc_fa_gp)
-    plt.plot(m, mean, color=col, marker='x', markersize=7)
-    plt.fill_between(m, mean + s, mean - s, alpha=0.15, color=col)
-    col = 'tab:brown'
-    mean, s = acc_ensemble_gp.mean(0), se(acc_ensemble_gp)
-    plt.plot(m, mean, color=col, marker='|', markersize=7, linestyle='--')
-    plt.fill_between(m, mean + s, mean - s, alpha=0.15, color=col)
+    # col = 'tab:orange'
+    # mean, s = acc_fa_gp.mean(0), se(acc_fa_gp)
+    # plt.plot(m, mean, color=col, marker='x', markersize=7)
+    # plt.fill_between(m, mean + s, mean - s, alpha=0.15, color=col)
+    # col = 'tab:brown'
+    # mean, s = acc_ensemble_gp.mean(0), se(acc_ensemble_gp)
+    # plt.plot(m, mean, color=col, marker='|', markersize=7, linestyle='--')
+    # plt.fill_between(m, mean + s, mean - s, alpha=0.15, color=col)
 
     plt.xlabel('$M$')
     plt.ylabel('Test loss')
