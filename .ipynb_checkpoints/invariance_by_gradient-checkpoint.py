@@ -183,7 +183,7 @@ def update_results(train_contrastive_loss, train_gradient_penalty, train_total_l
 for epoch in range(start_epoch, min(args.num_epochs, args.cut_off)):
     outputs = train(epoch)
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
-        X, y = encode_train_set(clftrainloader, device, net, args.dataset)
+        X, y = encode_train_set(clftrainloader, device, net)
         clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=1e-5)
         acc, test_loss = test(testloader, device, net, clf)
         update_results(*outputs, test_loss, acc)
