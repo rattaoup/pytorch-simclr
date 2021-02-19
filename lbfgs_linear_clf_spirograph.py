@@ -7,7 +7,7 @@ import torch
 import torch.backends.cudnn as cudnn
 
 from configs import get_datasets, get_spirograph_dataset
-from evaluate import encode_train_set, train_clf, test, train_reg, test_reg
+from evaluate import encode_train_set, train_clf, test, train_reg, test_reg, encode_train_set_spirograph
 from models import *
 from tqdm import tqdm
 from collections import defaultdict
@@ -60,29 +60,6 @@ args.dataset = checkpoint['args']['dataset']
 args.arch = checkpoint['args']['arch']
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-
-
-# encoding for spirograph train set
-def encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform):
-    net.eval()
-
-    store = []
-    with torch.no_grad():
-        t = tqdm(enumerate(clftrainloader), desc='Encoded: **/** ', total=len(clftrainloader),bar_format='{desc}{bar}{r_bar}')
-        for batch_idx, (inputs, targets) in t:
-            inputs, targets = inputs.to(device), targets.to(device)
-            shape = (inputs.shape[0] * 100, *inputs.shape[1:])
-            rn1 = col_distort.sample_random_numbers(inputs.shape, inputs.device)
-            inputs = batch_transform(inputs, rn1)
-            representation = net(inputs)
-            store.append((representation, targets))
-
-            t.set_description('Encoded %d/%d' % (batch_idx, len(clftrainloader)))
-
-    X, y = zip(*store)
-    X, y = torch.cat(X, dim=0), torch.cat(y, dim=0)
-    return X, y
-    
 # Funtion for getting loss
 def get_loss(fore_shift, back_shift, h_shift, fore_var, h_var, back_var):
     print('==> Loading settings from checkpoint..')
@@ -119,7 +96,7 @@ def get_loss(fore_shift, back_shift, h_shift, fore_var, h_var, back_var):
         cudnn.benchmark = True
 
     net.load_state_dict(checkpoint['net'])
-    
+
     # Encode and calculate loss
     best_acc = 0
     best_loss = float('inf')
@@ -139,7 +116,7 @@ def get_loss(fore_shift, back_shift, h_shift, fore_var, h_var, back_var):
                 if loss < best_loss:
                     best_loss = loss
 #                 print("Best test accuracy {:.5f}".format(loss))
-            
+
     return loss
 
 results = defaultdict(list)
@@ -164,11 +141,11 @@ for fore_shift in torch.linspace(args.fore_shift_lower, args.fore_shift_upper, a
                         # Loss
                         loss = get_loss(fore_shift, back_shift, h_shift, fore_var, h_var, back_var)
                         results[fname].append(loss)
-                        loss_list.append(loss)               
+                        loss_list.append(loss)
                         print('key: {}, loss: {}'.format(fname,loss))
 print('SUMMARY')
 for key in results:
     print('key: {}, loss: {}'.format(key,results[key]))
-    
+
 # print('loss_list')
 # print(loss_list)

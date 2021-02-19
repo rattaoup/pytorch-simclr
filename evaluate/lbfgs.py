@@ -3,6 +3,26 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 
+# encoding for spirograph train set
+def encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform):
+    net.eval()
+
+    store = []
+    with torch.no_grad():
+        t = tqdm(enumerate(clftrainloader), desc='Encoded: **/** ', total=len(clftrainloader),bar_format='{desc}{bar}{r_bar}')
+        for batch_idx, (inputs, targets) in t:
+            inputs, targets = inputs.to(device), targets.to(device)
+            shape = (inputs.shape[0] * 100, *inputs.shape[1:])
+            rn1 = col_distort.sample_random_numbers(inputs.shape, inputs.device)
+            inputs = batch_transform(inputs, rn1)
+            representation = net(inputs)
+            store.append((representation, targets))
+
+            t.set_description('Encoded %d/%d' % (batch_idx, len(clftrainloader)))
+
+    X, y = zip(*store)
+    X, y = torch.cat(X, dim=0), torch.cat(y, dim=0)
+    return X, y
 
 def encode_train_set(clftrainloader, device, net):
     net.eval()
