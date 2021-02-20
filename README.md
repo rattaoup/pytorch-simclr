@@ -1,7 +1,7 @@
-# Improving Transformation Invariance in Contrastive Representation Learning 
+# Improving Transformation Invariance in Contrastive Representation Learning
 ## Introduction
 This is a [PyTorch](https://github.com/pytorch/pytorch) implementation of Improving Transformation Invariance in Contrastive Representation Learning  
- 
+
 ### Data
 We use the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html), [CIFAR-100](https://www.cs.toronto.edu/~kriz/cifar.html) and our a novel Spirograph dataset which is introduced to explore our ideas in the context of a differentiable generative process with multiple downstream tasks. This code also supports [ILSVRC2012](http://image-net.org/challenges/LSVRC/2012/) datasets and [STL-10](https://cs.stanford.edu/~acoates/stl10/).
 
@@ -20,22 +20,24 @@ we can set `--lambda-gp 0` to train an encoder with no gradient penalty.
 ### Evaluating an encoder
 Use the following command to evaluate the trained encoder on a classification task
 ```
-$ python3 lbfgs_linear_clf.py --load-from output_epoch999.pth 
+$ python3 lbfgs_linear_clf.py --load-from output_epoch999.pth
 ```
-#### Spirograph dataset
-For the spirograph dataset, use the following to evaluate on generative parameters regression.
+and the regression task on generative parameters for the spirograph dataset
 ```
-$ python3 lbfgs_linear_clf_spirograph.py --load-from output_sg_epoch049.pth 
+$ python3 lbfgs_linear_clf_spirograph.py --load-from output_sg_epoch049.pth
 ```
-We can evaluate on predicting transformation parameter alpha by using the command
-```
-$ python3 scan_predict_alpha.py --baselines output_base --ours output_gp
-```
-this code will scan over a range of epoch of each checkpointfile, the default range is (100,1000).
+### Transformation parameters prediction
 
+We can evaluate on predicting transformation parameter alpha by using the following command
+```
+$ python3 alpha_prediction.py --load-from output_epoch999.pth
+```
+that works for all datasets.
+
+### Component-wise regression tasks for Spirograph
 In addition, we can look at each downstream tasks as in the Figure 3c) in the paper by running
 ```
-$ python3 lbfgs_linear_clf_spirograph_cp.py --load-from output_sg_epoch049.pth 
+$ python3 lbfgs_linear_clf_spirograph_cp.py --load-from output_sg_epoch049.pth
 ```
 #### Feature averaging
 Use the following command to evaluate classification performance of feature averaging where we scan over linspace(min_passes, max_passes, num_passes).
