@@ -15,7 +15,7 @@ from tqdm import tqdm
 from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from configs import get_datasets, get_mean_std
 from critic import LinearCritic
-from evaluate import save_checkpoint, encode_train_set, train_clf, test, encode_train_set_spirograph
+from evaluate import save_checkpoint, encode_train_set, train_clf, test, train_reg, test_reg, encode_train_set_spirograph
 from models import *
 from scheduler import CosineAnnealingWithLinearRampLR
 
@@ -182,10 +182,10 @@ def update_results(train_contrastive_loss, train_gradient_penalty, train_total_l
 for epoch in range(start_epoch, min(args.num_epochs, args.cut_off)):
     outputs = train(epoch)
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
-        if (arg.dataset == 'spirograph'):
+        if (args.dataset == 'spirograph'):
             X,y = encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform)
             X_test, y_test = encode_train_set_spirograph(testloader, device, net, col_distort, batch_transform)
-            clf = train_reg(X, y, device, reg_weight=reg_weight)
+            clf = train_reg(X, y, device, reg_weight=1e-5)
             test_loss = test_reg(X_test, y_test, clf)
             update_results(*outputs, test_loss, 0 ) # no accuracy for the regression task
         else:
