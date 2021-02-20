@@ -39,20 +39,15 @@ In addition, we can look at each downstream tasks as in the Figure 3c) in the pa
 ```
 $ python3 lbfgs_linear_clf_spirograph_cp.py --load-from output_sg_epoch049.pth
 ```
-#### Feature averaging
+### Feature averaging
 Use the following command to evaluate classification performance of feature averaging where we scan over linspace(min_passes, max_passes, num_passes).
 ```
 $ python3 feature_averaging.py --load-from output_epoch999.pth --min-num-passes 10 --max-num-passes 20	--step-num-passes 2
 ```
-We evaluate the regression performance of feature averaging by running the following code
-```
-$ python3 scan_eval_reg_fa.py --baselines output_base --ours output_gp --min-num-passes 10 --max-num-passes --step-num-passes 3
-```
-this code will scan over a range of epoch of each checkpointfile, the default range is (100,1000).
 
-#### Robustness
+### Robustness
 For spirograph robustness evaluation, we can run `lbfgs_linear_clf_spirograph.py` with additional command. For example, if we want to shift the distribution of background colour by s for each s in linspace(-0.5, 0.5, 6) we can use the following command
 ```
-$ python3 lbfgs_linear_clf_spirograph.py --load-from sg-gp-0_run1_epoch049.pth --back-var-lower -0.5 --back-var-upper 0.5 --back-var-num-passes 6
+$ python3 lbfgs_linear_clf_spirograph.py --load-from output_sg_epoch049.pth --back-var-lower -0.5 --back-var-upper 0.5 --back-var-num-passes 6
 ```
 available parameter includes mean and variance of h, background and foreground colour.
