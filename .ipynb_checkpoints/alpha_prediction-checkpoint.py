@@ -15,9 +15,9 @@ from evaluate import train_reg, test_reg
 
 parser = argparse.ArgumentParser(description='Tune regularization coefficient of downstream classifier.')
 parser.add_argument("--num-workers", type=int, default=2, help='Number of threads for data loaders')
-parser.add_argument("--baselines", type=str, default='ckpt', help='File series to load for baseline')
-parser.add_argument("--ours", type=str, default='invgpn', help='File series to load for our method')
 parser.add_argument("--reg", type=float, default=1e-5, help='Regularization parameter')
+parser.add_argument("--load-from", type=str, default='ckpt.pth', help='File to load from')
+
 args = parser.parse_args()
 
 
@@ -92,17 +92,11 @@ def get_loss(fname):
     X_test, y_test = create_dataset(testloader, device, net)
     clf = train_reg(X, y, device, reg_weight=args.reg)
     loss = test_reg(X_test, y_test, clf)
+    print('Loss for augmentation parameter prediction')
+    print(loss)
     return loss
 
 
 
-baselines = args.baselines.split(",")
-ours = args.ours.split(",")
-results = defaultdict(list)
-for stem in baselines+ours:
-    for epoch in range(9, 50, 10):
-        fname = stem + '_epoch{:03d}.pth'.format(epoch)
-        loss = get_loss(fname)
-        results[stem].append(loss)
+loss = get_loss(args.load_from)
 
-print(results)
