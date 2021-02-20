@@ -22,6 +22,7 @@ Use the following command to evaluate the trained encoder on a classification ta
 ```
 $ python3 lbfgs_linear_clf.py --load-from output_epoch999.pth 
 ```
+#### Spirograph dataset
 For the spirograph dataset, use the following to evaluate on generative parameters regression.
 ```
 $ python3 lbfgs_linear_clf_spirograph.py --load-from output_sg_epoch049.pth 
