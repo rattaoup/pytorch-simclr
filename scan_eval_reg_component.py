@@ -11,7 +11,7 @@ from collections import defaultdict
 from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from models import *
 from configs import get_datasets, get_mean_std
-from evaluate import train_reg, test_reg,test_reg_component
+from evaluate import train_reg, test_reg, test_reg_component, encode_train_set_spirograph
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Tune regularization coefficient of downstream classifier.')
@@ -64,29 +64,6 @@ def get_loss(fname):
     net.load_state_dict(checkpoint['net'])
 
     batch_transform = batch_transform.to(device)
-
-
-    def encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform):
-        net.eval()
-
-        store = []
-        with torch.no_grad():
-            t = tqdm(enumerate(clftrainloader), desc='Encoded: **/** ', total=len(clftrainloader),
-                     bar_format='{desc}{bar}{r_bar}')
-            for batch_idx, (inputs, targets) in t:
-                inputs, targets = inputs.to(device), targets.to(device)
-                shape = (inputs.shape[0] * 100, *inputs.shape[1:])
-                rn1 = col_distort.sample_random_numbers(inputs.shape, inputs.device)
-                inputs = batch_transform(inputs, rn1)
-                representation = net(inputs)
-                store.append((representation, targets))
-
-                t.set_description('Encoded %d/%d' % (batch_idx, len(clftrainloader)))
-
-        X, y = zip(*store)
-        X, y = torch.cat(X, dim=0), torch.cat(y, dim=0)
-        return X, y
-        
 
     X, y = encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform)
     X_test, y_test = encode_train_set_spirograph(testloader, device, net, col_distort, batch_transform)
