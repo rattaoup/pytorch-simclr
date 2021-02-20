@@ -24,7 +24,7 @@ $ python3 lbfgs_linear_clf.py --load-from output_epoch999.pth
 ```
 For the spirograph dataset, use the following to evaluate on generative parameters regression.
 ```
-$ python3 lbfgs_linear_clf_spirograph.py --load-from output_epoch049.pth 
+$ python3 lbfgs_linear_clf_spirograph.py --load-from output_sg_epoch049.pth 
 ```
 We can evaluate on predicting transformation parameter alpha by using the command
 ```
@@ -34,7 +34,7 @@ this code will scan over a range of epoch of each checkpointfile, the default ra
 
 In addition, we can look at each downstream tasks as in the Figure 3c) in the paper by running
 ```
-$run scan_eval_reg_component.py --baselines output_base --ours output_gp
+$ python3 lbfgs_linear_clf_spirograph_cp.py --load-from output_sg_epoch049.pth 
 ```
 #### Feature averaging
 Use the following command to evaluate classification performance of feature averaging where we scan over linspace(min_passes, max_passes, num_passes).
