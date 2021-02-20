@@ -44,7 +44,10 @@ Use the following command to evaluate classification performance of feature aver
 ```
 $ python3 feature_averaging.py --load-from output_epoch999.pth --min-num-passes 10 --max-num-passes 20	--step-num-passes 2
 ```
-
+for the spirograph, run the following code
+```
+$ python3 feature_averaging_spirograph.py --load-from output_sg_epoch049.pth --min-num-passes 10 --max-num-passes 20	--step-num-passes 2
+```
 ### Robustness
 For spirograph robustness evaluation, we can run `lbfgs_linear_clf_spirograph.py` with additional command. For example, if we want to shift the distribution of background colour by s for each s in linspace(-0.5, 0.5, 6) we can use the following command
 ```
