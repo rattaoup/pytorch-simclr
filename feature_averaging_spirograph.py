@@ -16,12 +16,11 @@ from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Tune regularization coefficient of downstream classifier.')
 parser.add_argument("--num-workers", type=int, default=2, help='Number of threads for data loaders')
-parser.add_argument("--baselines", type=str, default='ckpt', help='File series to load for baseline')
-parser.add_argument("--ours", type=str, default='invgpn', help='File series to load for our method')
 parser.add_argument("--reg", type=float, default=1e-8, help='Regularization parameter')
 parser.add_argument("--max-num-passes", type=int, default=20, help='Max number of passes to average')
 parser.add_argument("--min-num-passes", type=int, default=10, help='Min number of passes to average')
 parser.add_argument("--step-num-passes", type=int, default=2, help='Number of distinct M values to try')
+parser.add_argument("--load-from", type=str, default='eiei', help='File series to load')
 args = parser.parse_args()
 
 
@@ -69,7 +68,7 @@ def get_loss(fname):
     batch_transform = batch_transform.to(device)
 
 
-    def encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform,  num_passes, target=None,):
+    def encode_train_set_spirograph_multi(clftrainloader, device, net, col_distort, batch_transform,  num_passes, target=None,):
         if target is None:
             target = device
         net.eval()
@@ -96,8 +95,8 @@ def get_loss(fname):
         return X, y
         
 
-    X, y = encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform, num_passes=args.max_num_passes,target='cpu')
-    X_test, y_test = encode_train_set_spirograph(testloader, device, net, col_distort, batch_transform, num_passes=args.max_num_passes,target='cpu')
+    X, y = encode_train_set_spirograph_multi(clftrainloader, device, net, col_distort, batch_transform, num_passes=args.max_num_passes,target='cpu')
+    X_test, y_test = encode_train_set_spirograph_multi(testloader, device, net, col_distort, batch_transform, num_passes=args.max_num_passes,target='cpu')
     
     m_list = []
     loss_list = []
@@ -121,14 +120,10 @@ def get_loss(fname):
 
 
 
-baselines = args.baselines.split(",")
-ours = args.ours.split(",")
-results = defaultdict(list)
-for stem in baselines+ours:
-    for epoch in range(49, 50, 10):
-        print(epoch)
-        fname = stem + '_epoch{:03d}.pth'.format(epoch)
-        m_list, loss_list = get_loss(fname)
-        results[stem].append([m_list, loss_list])
 
-print(results)
+m_list, loss_list = get_loss(args.load_from)
+print('Number of passes')
+print(m_list)
+print('Loss')
+print(loss_list)
+
