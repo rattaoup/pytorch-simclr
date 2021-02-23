@@ -4,5 +4,3 @@ checkpoint
 clan
 Pipfile
 dataset-paths.json
-simclr.py
-invariance_by_gradient_norm.py
