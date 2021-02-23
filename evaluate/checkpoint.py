@@ -8,7 +8,6 @@ def save_checkpoint(net, clf, critic, epoch, args, script_name, results):
     print('Saving..')
     state = {
         'net': net.state_dict(),
-#         'clf': clf.state_dict(),
         'critic': critic.state_dict(),
         'epoch': epoch,
         'args': vars(args),
