@@ -70,3 +70,5 @@ for  Spirograph, run the following code
 $ python3 feature_averaging_spirograph.py --load-from output_sg_epoch049.pth --min-num-passes 10 --max-num-passes 20 --step-num-passes 2
 ```
 
+
+TODO: include brief note on expected performance on CIFAR-10 CIFAR-100
