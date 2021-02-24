@@ -14,24 +14,19 @@ from tqdm import tqdm
 
 from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from configs import get_datasets, get_mean_std
-from critic import TwoLayerCritic
-from evaluate import save_checkpoint, encode_train_set, train_clf, test, train_reg, test_reg, encode_train_set_spirograph
+from critic import MoCoTwoLayerCritic
+from evaluate import save_checkpoint, encode_train_set, train_clf, test
 from models import *
 from scheduler import CosineAnnealingWithLinearRampLR
 
 parser = argparse.ArgumentParser(description='PyTorch Contrastive Learning.')
-parser.add_argument('--base-lr', default=0.25, type=float, help='base learning rate, rescaled by batch_size/256')
+parser.add_argument('--base-lr', default=0.03, type=float, help='base learning rate, rescaled by batch_size/256')
 parser.add_argument("--momentum", default=0.9, type=float, help='SGD momentum')
 parser.add_argument('--resume', '-r', type=str, default='', help='resume from checkpoint with this filename')
 parser.add_argument('--dataset', '-d', type=str, default='cifar10', help='dataset',
-                    choices=['cifar10', 'cifar100', 'stl10', 'imagenet', 'spirograph'])
+                    choices=['cifar10', 'cifar100', 'stl10', 'imagenet'])
 parser.add_argument('--temperature', type=float, default=0.5, help='InfoNCE temperature')
-parser.add_argument('--lambda-gp', type=float, default=0., help='Gradient penalty coefficient')
-parser.add_argument("--gp-upper-limit", type=float, default=1., help='Clip the gradient penalty from above at this '
-                                                                     'value')
-parser.add_argument("--no-gp-normalization", action='store_true', help="Apply gradient penalization without L2 "
-                                                                       "normalization, default behaviour is to "
-                                                                       "normalize")
+parser.add_argument('--lambda-gp', type=float, default=0., help='Gradient penalty')
 parser.add_argument("--batch-size", type=int, default=512, help='Training batch size')
 parser.add_argument("--num-epochs", type=int, default=100, help='Number of training epochs')
 parser.add_argument("--cosine-anneal", action='store_true', help="Use cosine annealing on the learning rate")
@@ -43,15 +38,15 @@ parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit 
                                                               'classifier only training here.')
 parser.add_argument("--save-freq", type=int, default=100, help='Frequency to save checkpoints.')
 parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output file name')
-parser.add_argument("--cut-off", type=int, default=1000, help='Prematurely terminate the run at this epoch '
-                                                              'If larger than num-epochs, has no effect')
-parser.add_argument("--git", action='store_true', help="Record the git hash and diff (uses a subprocess call)")
+parser.add_argument("--cut-off", type=int, default=1000, help='last epoch')
+parser.add_argument("--moco-k", type=int, default=2048, help='Cache length for MoCo')
+parser.add_argument("--moco-m", type=float, default=0.99, help='Momentum parameter for MoCo')
+parser.add_argument("--critic-bn", action='store_true', help='Use batch normalization in critic')
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
-if args.git:
-    args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-    args.git_diff = subprocess.check_output(['git', 'diff'])
+args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+args.git_diff = subprocess.check_output(['git', 'diff'])
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 results = defaultdict(list)
@@ -59,10 +54,11 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 clf = None
 
 print('==> Preparing data..')
-trainset, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_datasets(args.dataset)
+trainset, testset, clftrainset, num_classes, stem = get_datasets(args.dataset)
 
+# drop_last so that the queue works correctly
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,
-                                          num_workers=args.num_workers, pin_memory=True)
+                                          num_workers=args.num_workers, pin_memory=True, drop_last=True)
 testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
                                          pin_memory=True)
 clftrainloader = torch.utils.data.DataLoader(clftrainset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
@@ -75,46 +71,84 @@ print('==> Building model..')
 ##############################################################
 if args.arch == 'resnet18':
     net = ResNet18(stem=stem)
+    net_k = ResNet18(stem=stem)
 elif args.arch == 'resnet34':
     net = ResNet34(stem=stem)
+    net_k = ResNet34(stem=stem)
 elif args.arch == 'resnet50':
     net = ResNet50(stem=stem)
+    net_k = ResNet50(stem=stem)
 else:
     raise ValueError("Bad architecture specification")
+for param_q, param_k in zip(net.parameters(), net_k.parameters()):
+    param_k.data.copy_(param_q.data)  # initialize
+    param_k.requires_grad = False  # not update by gradient
+
 net = net.to(device)
+net_k = net_k.to(device)
+queue = torch.randn(args.moco_k, 128)
+queue = nn.functional.normalize(queue, dim=1)
+queue = queue.to(device)
+ptr = 0
 
 ##############################################################
 # Critic
 ##############################################################
-critic = TwoLayerCritic(net.representation_dim, temperature=args.temperature).to(device)
+critic = MoCoTwoLayerCritic(net.representation_dim, temperature=args.temperature, bn=args.critic_bn)
+critic_k = MoCoTwoLayerCritic(net.representation_dim, temperature=args.temperature, bn=args.critic_bn)
+for param_q, param_k in zip(critic.parameters(), critic_k.parameters()):
+    param_k.data.copy_(param_q.data)  # initialize
+    param_k.requires_grad = False  # not update by gradient
+critic = critic.to(device)
+critic_k = critic_k.to(device)
 
 if device == 'cuda':
     repr_dim = net.representation_dim
     net = torch.nn.DataParallel(net)
+    net_k = torch.nn.DataParallel(net_k)
     net.representation_dim = repr_dim
+    net_k.representation_dim = repr_dim
     cudnn.benchmark = True
 
-
 criterion = nn.CrossEntropyLoss()
-base_optimizer = optim.SGD(list(net.parameters()) + list(critic.parameters()), lr=args.lr, weight_decay=1e-6,
-                           momentum=args.momentum)
+optimizer = optim.SGD(list(net.parameters()) + list(critic.parameters()), lr=args.lr, weight_decay=1e-6,
+                       momentum=args.momentum)
 if args.cosine_anneal:
-    scheduler = CosineAnnealingWithLinearRampLR(base_optimizer, args.num_epochs)
-encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
+    scheduler = CosineAnnealingWithLinearRampLR(optimizer, args.num_epochs)
+# MoCo does not use LARS
+# encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
+
 
 if args.resume:
-    # Load checkpoint.
-    print('==> Resuming from checkpoint..')
-    assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    resume_from = os.path.join('./checkpoint', args.resume)
-    checkpoint = torch.load(resume_from)
-    net.load_state_dict(checkpoint['net'])
-    critic.load_state_dict(checkpoint['critic'])
-    results = checkpoint['results']
-    start_epoch = checkpoint['epoch']+1
-    scheduler.step(start_epoch)
+    print("Resuming not support for MoCo")
+    raise SystemExit
 
-batch_transform = batch_transform.to(device)
+
+col_distort = ColourDistortion(s=0.5)
+batch_transform = ModuleCompose([
+        col_distort,
+        TensorNormalise(*get_mean_std(args.dataset))
+    ]).to(device)
+
+@torch.no_grad()
+def momentum_update_key_encoder():
+    for param_q, param_k in zip(net.parameters(), net_k.parameters()):
+        param_k.data = param_k.data * args.moco_m + param_q.data * (1. - args.moco_m)
+    for param_q, param_k in zip(critic.parameters(), critic_k.parameters()):
+        param_k.data = param_k.data * args.moco_m + param_q.data * (1. - args.moco_m)
+
+
+@torch.no_grad()
+def dequeue_and_enqueue(keys):
+    global ptr
+    batch_size = keys.shape[0]
+
+    assert args.moco_k % batch_size == 0  # for simplicity
+
+    # replace the keys at ptr (dequeue and enqueue)
+    queue[ptr:ptr + batch_size, :] = keys.detach()
+    ptr = (ptr + batch_size) % args.moco_k  # move pointer
+
 
 # Training
 def train(epoch):
@@ -130,34 +164,37 @@ def train(epoch):
         x1, x2 = x1.to(device), x2.to(device)
         rn1, rn2 = col_distort.sample_random_numbers(x1.shape, x1.device), col_distort.sample_random_numbers(x2.shape, x2.device)
         shape = (x1.shape[0] * 100, *x1.shape[1:])
-        if args.dataset == 'spirograph':
-            rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 6))
-        else:
-            rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 4))
-        x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2)
-        encoder_optimizer.zero_grad()
-        representation1, representation2 = net(x1), net(x2)
-        raw_scores, pseudotargets = critic(representation1, representation2)
+        rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 4))
+        x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2).detach()
+
+        # Encode k
+        with torch.no_grad():
+            momentum_update_key_encoder()
+            k = critic_k.project(net_k((x2)))
+
+        optimizer.zero_grad()
+        representation1 = net(x1)
+        q = critic.project(representation1)
+
+        raw_scores, pseudotargets = critic_k(q, k, queue)
+        dequeue_and_enqueue(k)
         contrastive_loss = criterion(raw_scores, pseudotargets)
 
         # Gradient Penalty
         # Sum over both dimensions to give a scalar loss
-        if args.no_gp_normalization:
-            h = representation1
-        else:
-            h = representation1 / representation1.norm(p=2, dim=-1, keepdim=True)
-        projection_h1 = ((torch.bernoulli(.5 * torch.ones(*representation1.shape, device=device)) * 2 - 1) * h).sum()
+        projection_h1 = ((torch.bernoulli(.5 * torch.ones(*representation1.shape, device=device)) * 2 - 1) * \
+                         representation1 / representation1.norm(p=2, dim=-1, keepdim=True)).sum()
         gradient_lambda = autograd.grad(outputs=projection_h1,
                                         inputs=rn1,
                                         create_graph=True,
                                         retain_graph=True,
                                         only_inputs=True)[0]
         # Use the standard gradient approximation net(rn2) - net(rn1) \approx (rn2 - rn1)net'(rn1)
-        gradient_penalty = (gradient_lambda * (rn_extra - rn1)).sum(-1).pow(2).mean().clamp(max=args.gp_upper_limit).to(device)
+        gradient_penalty = (gradient_lambda * (rn_extra - rn1)).sum(-1).pow(2).mean().clamp(max=1.).to(device)
         loss_gp = contrastive_loss + args.lambda_gp * gradient_penalty
 
         loss_gp.backward()
-        encoder_optimizer.step()
+        optimizer.step()
 
         train_contrastive_loss += contrastive_loss.item()
         train_gradient_penalty += gradient_penalty.item()
@@ -179,20 +216,13 @@ def update_results(train_contrastive_loss, train_gradient_penalty, train_total_l
     results['test_acc'].append(test_acc)
 
 
-for epoch in range(start_epoch, min(args.num_epochs, args.cut_off)):
+for epoch in range(start_epoch, min(args.cut_off,start_epoch + args.num_epochs)):
     outputs = train(epoch)
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
-        if (args.dataset == 'spirograph'):
-            X,y = encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform)
-            X_test, y_test = encode_train_set_spirograph(testloader, device, net, col_distort, batch_transform)
-            clf = train_reg(X, y, device, reg_weight=1e-5)
-            test_loss = test_reg(X_test, y_test, clf)
-            update_results(*outputs, test_loss, 0 ) # no accuracy for the regression task
-        else:
-            X, y = encode_train_set(clftrainloader, device, net)
-            clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=1e-5)
-            acc, test_loss = test(testloader, device, net, clf)
-            update_results(*outputs, test_loss, acc)
+        X, y = encode_train_set(clftrainloader, device, net)
+        clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=1e-5)
+        acc, test_loss = test(testloader, device, net, clf)
+        update_results(*outputs, test_loss, acc)
     if (epoch % args.save_freq == (args.save_freq - 1)):
         save_checkpoint(net, clf, critic, epoch, args, os.path.basename(__file__), results)
     if args.cosine_anneal:
