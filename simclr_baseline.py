@@ -8,7 +8,6 @@ import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
-import torch.autograd as autograd
 from torchlars import LARS
 from tqdm import tqdm
 
@@ -24,7 +23,7 @@ parser.add_argument('--base-lr', default=0.25, type=float, help='base learning r
 parser.add_argument("--momentum", default=0.9, type=float, help='SGD momentum')
 parser.add_argument('--resume', '-r', type=str, default='', help='resume from checkpoint with this filename')
 parser.add_argument('--dataset', '-d', type=str, default='cifar10', help='dataset',
-                    choices=['cifar10', 'cifar100', 'stl10', 'imagenet'])
+                    choices=['cifar10', 'cifar100', 'stl10', 'imagenet', 'spirograph'])
 parser.add_argument('--temperature', type=float, default=0.5, help='InfoNCE temperature')
 parser.add_argument("--batch-size", type=int, default=512, help='Training batch size')
 parser.add_argument("--num-epochs", type=int, default=100, help='Number of training epochs')
@@ -37,12 +36,15 @@ parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit 
                                                               'classifier only training here.')
 parser.add_argument("--save-freq", type=int, default=100, help='Frequency to save checkpoints.')
 parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output file name')
-parser.add_argument("--cut-off", type=int, default=1000, help='last epoch')
+parser.add_argument("--cut-off", type=int, default=1000, help='Prematurely terminate the run at this epoch '
+                                                              'If larger than num-epochs, has no effect')
+parser.add_argument("--git", action='store_true', help="Record the git hash and diff (uses a subprocess call)")
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
-args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-args.git_diff = subprocess.check_output(['git', 'diff'])
+if args.git:
+    args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+    args.git_diff = subprocess.check_output(['git', 'diff'])
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 results = defaultdict(list)
@@ -50,7 +52,7 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 clf = None
 
 print('==> Preparing data..')
-trainset, testset, clftrainset, num_classes, stem = get_datasets(args.dataset)
+trainset, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_datasets(args.dataset)
 
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,
                                           num_workers=args.num_workers, pin_memory=True)
@@ -85,13 +87,13 @@ if device == 'cuda':
     net.representation_dim = repr_dim
     cudnn.benchmark = True
 
+
 criterion = nn.CrossEntropyLoss()
 base_optimizer = optim.SGD(list(net.parameters()) + list(critic.parameters()), lr=args.lr, weight_decay=1e-6,
                            momentum=args.momentum)
 if args.cosine_anneal:
     scheduler = CosineAnnealingWithLinearRampLR(base_optimizer, args.num_epochs)
 encoder_optimizer = LARS(base_optimizer, trust_coef=1e-3)
-
 
 if args.resume:
     # Load checkpoint.
@@ -105,12 +107,7 @@ if args.resume:
     start_epoch = checkpoint['epoch']+1
     scheduler.step(start_epoch)
 
-
-col_distort = ColourDistortion(s=0.5)
-batch_transform = ModuleCompose([
-        col_distort,
-        TensorNormalise(*get_mean_std(args.dataset))
-    ]).to(device)
+batch_transform = batch_transform.to(device)
 
 
 # Training
@@ -148,7 +145,7 @@ def update_results(train_total_loss, test_loss, test_acc):
     results['test_acc'].append(test_acc)
 
 
-for epoch in range(start_epoch, min(args.cut_off,start_epoch + args.num_epochs)):
+for epoch in range(start_epoch, min(args.num_epochs, args.cut_off)):
     outputs = train(epoch)
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
         X, y = encode_train_set(clftrainloader, device, net)

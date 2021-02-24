@@ -15,7 +15,7 @@ from tqdm import tqdm
 from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from configs import get_datasets, get_mean_std
 from critic import TwoLayerCritic
-from evaluate import save_checkpoint, encode_train_set, train_clf, test
+from evaluate import save_checkpoint, encode_train_set, train_clf, test, train_reg, test_reg, encode_train_set_spirograph
 from models import *
 from scheduler import CosineAnnealingWithLinearRampLR
 
@@ -24,9 +24,14 @@ parser.add_argument('--base-lr', default=0.25, type=float, help='base learning r
 parser.add_argument("--momentum", default=0.9, type=float, help='SGD momentum')
 parser.add_argument('--resume', '-r', type=str, default='', help='resume from checkpoint with this filename')
 parser.add_argument('--dataset', '-d', type=str, default='cifar10', help='dataset',
-                    choices=['cifar10', 'cifar100', 'stl10', 'imagenet'])
+                    choices=['cifar10', 'cifar100', 'stl10', 'imagenet', 'spirograph'])
 parser.add_argument('--temperature', type=float, default=0.5, help='InfoNCE temperature')
-parser.add_argument('--lambda-gp', type=float, default=0., help='Gradient penalty')
+parser.add_argument('--lambda-gp', type=float, default=0., help='Gradient penalty coefficient')
+parser.add_argument("--gp-upper-limit", type=float, default=1., help='Clip the gradient penalty from above at this '
+                                                                     'value')
+parser.add_argument("--no-gp-normalization", action='store_true', help="Apply gradient penalization without L2 "
+                                                                       "normalization, default behaviour is to "
+                                                                       "normalize")
 parser.add_argument("--batch-size", type=int, default=512, help='Training batch size')
 parser.add_argument("--num-epochs", type=int, default=100, help='Number of training epochs')
 parser.add_argument("--cosine-anneal", action='store_true', help="Use cosine annealing on the learning rate")
@@ -38,12 +43,15 @@ parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit 
                                                               'classifier only training here.')
 parser.add_argument("--save-freq", type=int, default=100, help='Frequency to save checkpoints.')
 parser.add_argument("--filename", type=str, default='ckpt.pth', help='Output file name')
-parser.add_argument("--cut-off", type=int, default=1000, help='last epoch')
+parser.add_argument("--cut-off", type=int, default=1000, help='Prematurely terminate the run at this epoch '
+                                                              'If larger than num-epochs, has no effect')
+parser.add_argument("--git", action='store_true', help="Record the git hash and diff (uses a subprocess call)")
 args = parser.parse_args()
 args.lr = args.base_lr * (args.batch_size / 256)
 
-args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-args.git_diff = subprocess.check_output(['git', 'diff'])
+if args.git:
+    args.git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+    args.git_diff = subprocess.check_output(['git', 'diff'])
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 results = defaultdict(list)
@@ -51,7 +59,7 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 clf = None
 
 print('==> Preparing data..')
-trainset, testset, clftrainset, num_classes, stem = get_datasets(args.dataset)
+trainset, testset, clftrainset, num_classes, stem, col_distort, batch_transform = get_datasets(args.dataset)
 
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,
                                           num_workers=args.num_workers, pin_memory=True)
@@ -106,14 +114,7 @@ if args.resume:
     start_epoch = checkpoint['epoch']+1
     scheduler.step(start_epoch)
 
-
-
-col_distort = ColourDistortion(s=0.5)
-batch_transform = ModuleCompose([
-        col_distort,
-        TensorNormalise(*get_mean_std(args.dataset))
-    ]).to(device)
-
+batch_transform = batch_transform.to(device)
 
 # Training
 def train(epoch):
@@ -128,8 +129,11 @@ def train(epoch):
         x1, x2 = inputs
         x1, x2 = x1.to(device), x2.to(device)
         rn1, rn2 = col_distort.sample_random_numbers(x1.shape, x1.device), col_distort.sample_random_numbers(x2.shape, x2.device)
-        shape = (x1.shape[0]*100, *x1.shape[1:])
-        rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 4))
+        shape = (x1.shape[0] * 100, *x1.shape[1:])
+        if args.dataset == 'spirograph':
+            rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 6))
+        else:
+            rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 4))
         x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2)
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
@@ -138,14 +142,18 @@ def train(epoch):
 
         # Gradient Penalty
         # Sum over both dimensions to give a scalar loss
-        projection_h1 = ((torch.bernoulli(.5 * torch.ones(*representation1.shape, device=device)) * 2 - 1) * representation1 ).sum()
+        if args.no_gp_normalization:
+            h = representation1
+        else:
+            h = representation1 / representation1.norm(p=2, dim=-1, keepdim=True)
+        projection_h1 = ((torch.bernoulli(.5 * torch.ones(*representation1.shape, device=device)) * 2 - 1) * h).sum()
         gradient_lambda = autograd.grad(outputs=projection_h1,
                                         inputs=rn1,
                                         create_graph=True,
                                         retain_graph=True,
                                         only_inputs=True)[0]
         # Use the standard gradient approximation net(rn2) - net(rn1) \approx (rn2 - rn1)net'(rn1)
-        gradient_penalty = (gradient_lambda * (rn_extra - rn1)).sum(-1).pow(2).mean().clamp(max=100).to(device)
+        gradient_penalty = (gradient_lambda * (rn_extra - rn1)).sum(-1).pow(2).mean().clamp(max=args.gp_upper_limit).to(device)
         loss_gp = contrastive_loss + args.lambda_gp * gradient_penalty
 
         loss_gp.backward()
@@ -171,13 +179,20 @@ def update_results(train_contrastive_loss, train_gradient_penalty, train_total_l
     results['test_acc'].append(test_acc)
 
 
-for epoch in range(start_epoch, min(args.cut_off,start_epoch + args.num_epochs)):
+for epoch in range(start_epoch, min(args.num_epochs, args.cut_off)):
     outputs = train(epoch)
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
-        X, y = encode_train_set(clftrainloader, device, net)
-        clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=1e-5)
-        acc, test_loss = test(testloader, device, net, clf)
-        update_results(*outputs, test_loss, acc)
+        if (args.dataset == 'spirograph'):
+            X,y = encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform)
+            X_test, y_test = encode_train_set_spirograph(testloader, device, net, col_distort, batch_transform)
+            clf = train_reg(X, y, device, reg_weight=1e-5)
+            test_loss = test_reg(X_test, y_test, clf)
+            update_results(*outputs, test_loss, 0 ) # no accuracy for the regression task
+        else:
+            X, y = encode_train_set(clftrainloader, device, net)
+            clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=1e-5)
+            acc, test_loss = test(testloader, device, net, clf)
+            update_results(*outputs, test_loss, acc)
     if (epoch % args.save_freq == (args.save_freq - 1)):
         save_checkpoint(net, clf, critic, epoch, args, os.path.basename(__file__), results)
     if args.cosine_anneal:
