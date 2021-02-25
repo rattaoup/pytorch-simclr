@@ -6,7 +6,7 @@ import argparse
 from tqdm import tqdm
 
 from models import *
-from configs import get_datasets
+from data.configs import get_datasets
 from evaluate import train_clf, test_matrix, train_reg, test_reg
 
 

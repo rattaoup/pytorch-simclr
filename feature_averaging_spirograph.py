@@ -1,17 +1,16 @@
+#### WARNING: FILE FLAGGED FOR DELETION
+
 '''Train CIFAR10/100 with PyTorch using standard Contrastive Learning. This script tunes evaluates the invariance of
 the learned representations.'''
 import torch
 import torch.backends.cudnn as cudnn
 
-import math
 import os
 import argparse
-from collections import defaultdict
 
-from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from models import *
-from configs import get_datasets, get_mean_std
-from evaluate import train_reg, test_reg, test_reg_component
+from data.configs import get_datasets
+from evaluate import train_reg, test_reg
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Tune regularization coefficient of downstream classifier.')

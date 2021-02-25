@@ -6,9 +6,9 @@ import torchvision.transforms as transforms
 from torch.utils.data import Subset
 from collections import defaultdict
 
-from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
+from data.augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from spirograph import DrawSpirograph
-from dataset import *
+from data.dataset import *
 from models import *
 
 
@@ -20,14 +20,14 @@ def get_mean_std(dataset):
     return CACHED_MEAN_STD[dataset]
 
 
-def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, num_positive=None,
-                 augment_test=False, train_proportion=1.,s = 0.5):
+def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, augment_test=False,
+                 train_proportion=1.,s = 0.5):
     if dataset == 'spirograph':
         return get_spirograph_dataset(train_proportion = train_proportion)
     else:
         return get_img_datasets(dataset=dataset, augment_clf_train=augment_clf_train,
-                                add_indices_to_data=add_indices_to_data, num_positive=num_positive,
-                                augment_test=augment_test, train_proportion=train_proportion, s = s)
+                                add_indices_to_data=add_indices_to_data, augment_test=augment_test,
+                                train_proportion=train_proportion, s = s)
 
 
 def get_spirograph_dataset(train_proportion=1., rgb_fore_bounds=(.4, 1), rgb_back_bounds=(0, .6), h_bounds=(.5, 2.5)):

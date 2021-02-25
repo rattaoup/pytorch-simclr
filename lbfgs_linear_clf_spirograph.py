@@ -1,3 +1,5 @@
+#### FILE FLAGGED FOR CLEANUP AND MERGE WITH lbfgs_lienar_clf_spirograph_cp.py
+
 '''This script tunes the L2 reg weight of the final classifier.'''
 import argparse
 import os
@@ -6,10 +8,9 @@ import math
 import torch
 import torch.backends.cudnn as cudnn
 
-from configs import get_datasets, get_spirograph_dataset
-from evaluate import encode_train_set, train_clf, test, train_reg, test_reg, encode_train_set_transformed
+from data.configs import get_spirograph_dataset
+from evaluate import train_reg, test_reg, encode_train_set_transformed
 from models import *
-from tqdm import tqdm
 from collections import defaultdict
 import numpy as np
 

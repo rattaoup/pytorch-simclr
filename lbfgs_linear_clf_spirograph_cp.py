@@ -1,18 +1,16 @@
+#### FILE FLAGGED FOR CLEANUP AND MERGE WITH lbfgs_lienar_clf_spirograph.py
+
 '''Train CIFAR10/100 with PyTorch using standard Contrastive Learning. This script tunes evaluates the invariance of
 the learned representations.'''
 import torch
 import torch.backends.cudnn as cudnn
 
-import math
 import os
 import argparse
-from collections import defaultdict
 
-from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from models import *
-from configs import get_datasets, get_mean_std
-from evaluate import train_reg, test_reg, test_reg_component, encode_train_set_transformed
-from tqdm import tqdm
+from data.configs import get_datasets
+from evaluate import train_reg, test_reg_component, encode_train_set_transformed
 
 parser = argparse.ArgumentParser(description='Tune regularization coefficient of downstream classifier.')
 parser.add_argument("--num-workers", type=int, default=2, help='Number of threads for data loaders')

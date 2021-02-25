@@ -12,12 +12,11 @@ import torch.autograd as autograd
 from torchlars import LARS
 from tqdm import tqdm
 
-from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
-from configs import get_datasets, get_mean_std
-from critic import TwoLayerCritic
+from data.configs import get_datasets
+from models.critic import TwoLayerCritic
 from evaluate import save_checkpoint, encode_train_set, train_clf, test, train_reg, test_reg, encode_train_set_transformed
 from models import *
-from scheduler import CosineAnnealingWithLinearRampLR
+from optim import CosineAnnealingWithLinearRampLR
 
 parser = argparse.ArgumentParser(description='PyTorch Contrastive Learning.')
 parser.add_argument('--base-lr', default=0.25, type=float, help='base learning rate, rescaled by batch_size/256')

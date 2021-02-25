@@ -3,7 +3,7 @@ from math import pi
 import torch
 from torch import nn
 from torch.utils.data import TensorDataset
-from dataset import BiaugmentTensorDataset
+from data.dataset import BiaugmentTensorDataset
 
 
 class DrawSpirograph(nn.Module):

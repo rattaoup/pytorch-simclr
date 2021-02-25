@@ -70,7 +70,9 @@ for  Spirograph, run the following code
 $ python3 feature_averaging_spirograph.py --load-from output_sg_epoch049.pth --min-num-passes 10 --max-num-passes 20 --step-num-passes 2
 ```
 
-TODO: Merge `feature_averaging.py` and `feature_averaging_spirograph.py`
+TODO: Merge `feature_averaging.py` and `feature_averaging_spirograph.py` (done)
+
+TODO: test `feature_averaging.py` works on spirograph and on cifar
 
 TODO: Merge `lbfgs_linear_clf_spirograph.py` and `lbfgs_linear_clf_spirograph_cp.py` and make this support classification with untransformed inputs for CIFAR
 
