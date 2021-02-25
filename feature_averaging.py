@@ -56,8 +56,8 @@ def main(args):
 
     testloader = torch.utils.data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
                                              pin_memory=True)
-    clftrainloader = torch.utils.data.DataLoader(clftrainset, batch_size=1000, shuffle=False, num_workers=args.num_workers,
-                                                 pin_memory=True)
+    clftrainloader = torch.utils.data.DataLoader(clftrainset, batch_size=1000, shuffle=False,
+                                                 num_workers=args.num_workers, pin_memory=True)
 
     # Model
     print('==> Building model..')
@@ -96,16 +96,17 @@ def main(args):
         X_this = X[:m, ...].mean(0)
         X_test_this = X_test[:m, ...].mean(0)
         if task == "clf":
-            clf = train_clf(X_this.to(device), y.to(device), net.representation_dim, num_classes, device, reg_weight=args.reg_weight)
+            clf = train_clf(X_this.to(device), y.to(device), net.representation_dim, num_classes, device,
+                            reg_weight=args.reg_weight)
             acc, loss = test_matrix(X_test_this.to(device), y_test.to(device), clf)
         elif task == "reg":
-            clf = train_reg(X_this, y, device, reg_weight=args.reg_weight)
-            loss = test_reg(X_test_this, y_test, clf)
+            regressor = train_reg(X_this, y, device, reg_weight=args.reg_weight)
+            loss = test_reg(X_test_this, y_test, regressor)
             acc = None
         else:
             raise ValueError("Unexpected task type: %s" % task)
         results[m] = (acc,loss)
-    print(results)
+    return results
 
 
 if __name__ == '__main__':
@@ -119,7 +120,7 @@ if __name__ == '__main__':
     parser.add_argument("--reg-weight", type=float, default=1e-5, help='Regularization parameter')
     parser.add_argument("--proportion", type=float, default=1., help='Proportion of train data to use')
     args = parser.parse_args()
-    main(args)
+    print(main(args))
 
 
 
