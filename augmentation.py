@@ -59,9 +59,10 @@ def adjust_hue(img, scale):
 
     elif len(img.shape) == 4:
         B = img.shape[0]
-        T_hue = torch.stack([torch.ones(B, device=scale.device), torch.zeros(B, device=scale.device), torch.zeros(B, device=scale.device),
-                             torch.zeros(B, device=scale.device), torch.cos(scale), -torch.sin(scale),
-                             torch.zeros(B, device=scale.device), torch.sin(scale), torch.cos(scale)], dim=-1).reshape(B, 3, 3)
+        T_hue = torch.stack([torch.ones(B, device=scale.device), torch.zeros(B, device=scale.device),
+                             torch.zeros(B, device=scale.device), torch.zeros(B, device=scale.device),
+                             torch.cos(scale), -torch.sin(scale), torch.zeros(B, device=scale.device),
+                             torch.sin(scale), torch.cos(scale)], dim=-1).reshape(B, 3, 3)
         T_final = torch.matmul(torch.matmul(T_rgb, T_hue), T_yiq).unsqueeze(1).unsqueeze(1)
         return rmv(T_final, img.transpose(1, -1)).transpose(-1, 1)
 
@@ -209,14 +210,6 @@ class TensorColorJitter(nn.Module):
         return aug_parameters
 
     def forward(self, img, aug_parameters):
-        """
-        Args:
-            img (PIL Image or Tensor): Input image.
-
-        Returns:
-            PIL Image or Tensor: Color jittered image.
-        """
-        B = img.shape[0]
         order = [0, 1, 2, 3]
         for i in order:
             if i == 0:

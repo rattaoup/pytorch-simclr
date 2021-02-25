@@ -116,6 +116,7 @@ if args.resume:
 
 batch_transform = batch_transform.to(device)
 
+
 # Training
 def train(epoch):
     print('\nEpoch: %d' % epoch)
@@ -180,12 +181,12 @@ def update_results(train_contrastive_loss, train_gradient_penalty, train_total_l
 for epoch in range(start_epoch, min(args.num_epochs, args.cut_off)):
     outputs = train(epoch)
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
-        if (args.dataset == 'spirograph'):
+        if args.dataset == 'spirograph':
             X,y = encode_train_set_transformed(clftrainloader, device, net, col_distort, batch_transform)
             X_test, y_test = encode_train_set_transformed(testloader, device, net, col_distort, batch_transform)
             clf = train_reg(X, y, device, reg_weight=1e-5)
             test_loss = test_reg(X_test, y_test, clf)
-            update_results(*outputs, test_loss, 0 ) # no accuracy for the regression task
+            update_results(*outputs, test_loss, 0)  # no accuracy for the regression task
         else:
             X, y = encode_train_set(clftrainloader, device, net)
             clf = train_clf(X, y, net.representation_dim, num_classes, device, reg_weight=1e-5)
