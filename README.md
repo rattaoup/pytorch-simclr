@@ -72,6 +72,8 @@ $ python3 feature_averaging_spirograph.py --load-from output_sg_epoch049.pth --m
 
 TODO: Merge `feature_averaging.py` and `feature_averaging_spirograph.py` (done)
 
+TODO: refactor and test `invclr.py` on all datasets. Top priority!
+
 TODO: test `feature_averaging.py` works on spirograph and on cifar
 
 TODO: Merge `lbfgs_linear_clf_spirograph.py` and `lbfgs_linear_clf_spirograph_cp.py` and make this support classification with untransformed inputs for CIFAR
