@@ -31,32 +31,3 @@ class TwoLayerCritic(nn.Module):
         raw_scores = torch.cat([raw_scores1, raw_scores2], dim=-2)
         targets = torch.arange(2 * d, dtype=torch.long, device=raw_scores.device)
         return raw_scores, targets
-
-
-class MoCoTwoLayerCritic(nn.Module):
-
-    def __init__(self, latent_dim, temperature=1., bn=False):
-        super(MoCoTwoLayerCritic, self).__init__()
-        self.temperature = temperature
-        self.projection_dim = 128
-        self.w1 = nn.Linear(latent_dim, latent_dim, bias=False)
-        self.bn1 = nn.BatchNorm1d(latent_dim)
-        self.relu = nn.ReLU()
-        self.w2 = nn.Linear(latent_dim, self.projection_dim, bias=False)
-        self.bn2 = nn.BatchNorm1d(self.projection_dim, affine=False)
-        self.cossim = nn.CosineSimilarity(dim=-1)
-        self.bn = bn
-
-    def project(self, h):
-        if self.bn:
-            return self.bn2(self.w2(self.relu(self.bn1(self.w1(h)))))
-        else:
-            return self.w2(self.relu(self.w1(h)))
-
-    def forward(self, q, k, queue):
-        simqk = self.cossim(q, k).unsqueeze(-1) / self.temperature
-        simqqueue = self.cossim(q.unsqueeze(-2), queue.clone().detach().unsqueeze(-3)) / self.temperature
-        raw_scores = torch.cat([simqk, simqqueue], dim=-1)
-        d = simqk.shape[0]
-        targets = torch.zeros(d, dtype=torch.long, device=raw_scores.device)
-        return raw_scores, targets

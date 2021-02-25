@@ -3,8 +3,9 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 
+
 # encoding for spirograph train set
-def encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform):
+def encode_train_set_transformed(clftrainloader, device, net, col_distort, batch_transform):
     net.eval()
 
     store = []
@@ -12,7 +13,6 @@ def encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_
         t = tqdm(enumerate(clftrainloader), desc='Encoded: **/** ', total=len(clftrainloader),bar_format='{desc}{bar}{r_bar}')
         for batch_idx, (inputs, targets) in t:
             inputs, targets = inputs.to(device), targets.to(device)
-            shape = (inputs.shape[0] * 100, *inputs.shape[1:])
             rn1 = col_distort.sample_random_numbers(inputs.shape, inputs.device)
             inputs = batch_transform(inputs, rn1)
             representation = net(inputs)
@@ -23,6 +23,7 @@ def encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_
     X, y = zip(*store)
     X, y = torch.cat(X, dim=0), torch.cat(y, dim=0)
     return X, y
+
 
 def encode_train_set(clftrainloader, device, net):
     net.eval()
@@ -117,13 +118,10 @@ def test_matrix(X, y, clf):
     return acc, test_clf_loss.item()
 
 
-def train_reg(X, y, device, reg_weight=1e-3):
+def train_reg(X, y, device, reg_weight=1e-3, n_lbfgs_steps=500):
     print('\nL2 Regularization weight: %g' % reg_weight)
 
     criterion = nn.MSELoss()
-    n_lbfgs_steps = 500
-
-    # Should be reset after each epoch for a completely independent evaluation
     reg = nn.Linear(X.shape[-1], y.shape[-1]).to(device)
     clf_optimizer = optim.LBFGS(reg.parameters())
     reg.train()

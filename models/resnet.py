@@ -23,17 +23,6 @@ class StemCIFAR(nn.Module):
         return F.relu(self.bn1(self.conv1(inputs)))
 
 
-class StemSTL(StemCIFAR):
-    def __init__(self):
-        super(StemSTL, self).__init__()
-        self.maxpool = nn.MaxPool2d(kernel_size=3)
-
-    def forward(self, inputs):
-        out = F.relu(self.bn1(self.conv1(inputs)))
-        out = self.maxpool(out)
-        return out
-
-
 class StemImageNet(nn.Module):
     def __init__(self):
         super(StemImageNet, self).__init__()

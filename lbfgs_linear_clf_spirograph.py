@@ -7,7 +7,7 @@ import torch
 import torch.backends.cudnn as cudnn
 
 from configs import get_datasets, get_spirograph_dataset
-from evaluate import encode_train_set, train_clf, test, train_reg, test_reg, encode_train_set_spirograph
+from evaluate import encode_train_set, train_clf, test, train_reg, test_reg, encode_train_set_transformed
 from models import *
 from tqdm import tqdm
 from collections import defaultdict
@@ -103,8 +103,8 @@ def get_loss(fore_shift, back_shift, h_shift, fore_var, h_var, back_var):
     # only for the spirograph dataset
     if args.dataset == 'spirograph':
         print('==> Preparing data..')
-        X,y = encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform)
-        X_test, y_test = encode_train_set_spirograph(testloader, device, net, col_distort, batch_transform)
+        X,y = encode_train_set_transformed(clftrainloader, device, net, col_distort, batch_transform)
+        X_test, y_test = encode_train_set_transformed(testloader, device, net, col_distort, batch_transform)
         if args.norm_rep:
             X = X / X.norm(p=2, dim=-1, keepdim=True)
             X_test = X_test / X_test.norm(p=2, dim=-1, keepdim=True)

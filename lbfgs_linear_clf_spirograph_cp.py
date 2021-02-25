@@ -11,7 +11,7 @@ from collections import defaultdict
 from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from models import *
 from configs import get_datasets, get_mean_std
-from evaluate import train_reg, test_reg, test_reg_component, encode_train_set_spirograph
+from evaluate import train_reg, test_reg, test_reg_component, encode_train_set_transformed
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Tune regularization coefficient of downstream classifier.')
@@ -64,8 +64,8 @@ def get_loss(fname):
 
     batch_transform = batch_transform.to(device)
 
-    X, y = encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform)
-    X_test, y_test = encode_train_set_spirograph(testloader, device, net, col_distort, batch_transform)
+    X, y = encode_train_set_transformed(clftrainloader, device, net, col_distort, batch_transform)
+    X_test, y_test = encode_train_set_transformed(testloader, device, net, col_distort, batch_transform)
     clf = train_reg(X, y, device, reg_weight=args.reg)
     loss = test_reg_component(X_test, y_test, clf)
     print('Loss for component [m, b, sigma, foreground_R]')

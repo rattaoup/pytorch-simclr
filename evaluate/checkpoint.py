@@ -1,9 +1,8 @@
 import os
-
 import torch
 
 
-def save_checkpoint(net, clf, critic, epoch, args, script_name, results):
+def save_checkpoint(net, critic, epoch, args, script_name, results):
     # Save checkpoint.
     print('Saving..')
     state = {

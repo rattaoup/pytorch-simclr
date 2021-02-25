@@ -19,7 +19,7 @@ To use the Spirograph dataset in an unrelated project, see this [standalone repo
 We support multi-GPU `DataParallel` training.
 Use the following command to train an encoder from scratch on CIFAR-10
 ```bash
-$ python3 invariance_by_gradient.py \
+$ python3 invclr.py \
   --base-lr 1.5 \
   --num-epochs 1000 \
   --cosine-anneal \
@@ -31,7 +31,7 @@ $ python3 invariance_by_gradient.py \
 with a similar command for `cifar100`.
 To train an encoder on the Spirograph dataset, use
 ```bash
-$ python3 invariance_by_gradient.py \
+$ python3 invclr.py \
   --base-lr 1.5 \
   --num-epochs 50 \
   --cosine-anneal \

@@ -15,7 +15,7 @@ from tqdm import tqdm
 from augmentation import ColourDistortion, TensorNormalise, ModuleCompose
 from configs import get_datasets, get_mean_std
 from critic import TwoLayerCritic
-from evaluate import save_checkpoint, encode_train_set, train_clf, test, train_reg, test_reg, encode_train_set_spirograph
+from evaluate import save_checkpoint, encode_train_set, train_clf, test, train_reg, test_reg, encode_train_set_transformed
 from models import *
 from scheduler import CosineAnnealingWithLinearRampLR
 
@@ -130,10 +130,8 @@ def train(epoch):
         x1, x2 = x1.to(device), x2.to(device)
         rn1, rn2 = col_distort.sample_random_numbers(x1.shape, x1.device), col_distort.sample_random_numbers(x2.shape, x2.device)
         shape = (x1.shape[0] * 100, *x1.shape[1:])
-        if args.dataset == 'spirograph':
-            rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 6))
-        else:
-            rn_extra = col_distort.sample_random_numbers(shape, x1.device).reshape((100, x1.shape[0], 4))
+        rn_extra = col_distort.sample_random_numbers(shape, x1.device)
+        rn_extra = rn_extra.reshape((100, x1.shape[10], rn_extra.shape[-1]))
         x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2)
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)
@@ -183,8 +181,8 @@ for epoch in range(start_epoch, min(args.num_epochs, args.cut_off)):
     outputs = train(epoch)
     if (args.test_freq > 0) and (epoch % args.test_freq == (args.test_freq - 1)):
         if (args.dataset == 'spirograph'):
-            X,y = encode_train_set_spirograph(clftrainloader, device, net, col_distort, batch_transform)
-            X_test, y_test = encode_train_set_spirograph(testloader, device, net, col_distort, batch_transform)
+            X,y = encode_train_set_transformed(clftrainloader, device, net, col_distort, batch_transform)
+            X_test, y_test = encode_train_set_transformed(testloader, device, net, col_distort, batch_transform)
             clf = train_reg(X, y, device, reg_weight=1e-5)
             test_loss = test_reg(X_test, y_test, clf)
             update_results(*outputs, test_loss, 0 ) # no accuracy for the regression task
@@ -194,6 +192,6 @@ for epoch in range(start_epoch, min(args.num_epochs, args.cut_off)):
             acc, test_loss = test(testloader, device, net, clf)
             update_results(*outputs, test_loss, acc)
     if (epoch % args.save_freq == (args.save_freq - 1)):
-        save_checkpoint(net, clf, critic, epoch, args, os.path.basename(__file__), results)
+        save_checkpoint(net, critic, epoch, args, os.path.basename(__file__), results)
     if args.cosine_anneal:
         scheduler.step()
