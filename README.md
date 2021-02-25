@@ -1,5 +1,4 @@
 # InvCLR: Improving Transformation Invariance in Contrastive Representation Learning
-## Introduction
 This is a [PyTorch](https://github.com/pytorch/pytorch) implementation of the ICLR paper [Improving Transformation Invariance in Contrastive Representation Learning (InvCLR)](https://arxiv.org/abs/2010.09515):
 ```
 @article{foster2020improving,
@@ -13,7 +12,7 @@ This is a [PyTorch](https://github.com/pytorch/pytorch) implementation of the IC
 ## Installation and datasets
 Install PyTorch following the instructions [here](https://pytorch.org/). Download the the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) and [CIFAR-100](https://www.cs.toronto.edu/~kriz/cifar.html) datasets.
 The Spirograph dataset is included in this code base.
-To use the Spirograph dataset in an unrelated project, see this [standalone repo](https://github.com/rattaoup/spirograph).
+To use the Spirograph dataset on its own, see this [standalone repo](https://github.com/rattaoup/spirograph).
 
 ## Training an encoder
 We support multi-GPU `DataParallel` training.
