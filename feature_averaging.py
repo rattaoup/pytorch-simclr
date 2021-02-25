@@ -105,7 +105,7 @@ def main(args):
             acc = None
         else:
             raise ValueError("Unexpected task type: %s" % task)
-        results[m] = (acc,loss)
+        results[m] = (acc, loss)
     return results
 
 
@@ -121,6 +121,3 @@ if __name__ == '__main__':
     parser.add_argument("--proportion", type=float, default=1., help='Proportion of train data to use')
     args = parser.parse_args()
     print(main(args))
-
-
-
