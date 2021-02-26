@@ -60,14 +60,9 @@ $ python3 eval.py \
   --reg-weight 1e-8 \
   --proportion 0.5
 ```
+On Spirograph, you can view regression results for each of the separate tasks by adding `--componentwise`, otherwise
+the presented loss is the mean over all tasks.
 
-### Component-wise regression tasks for Spirograph
-TODO: add this to the `eval` script
-
-In addition, we can look at each downstream tasks as in the Figure 3c) in the paper by running
-```
-$ python3 lbfgs_linear_clf_spirograph_cp.py --load-from output_sg_epoch049.pth
-```
 ### Feature averaging
 Use the following command to evaluate classification performance of feature averaging using an average of 100 samples
 ```bash
