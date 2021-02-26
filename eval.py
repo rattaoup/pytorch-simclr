@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from models import *
 from data.configs import get_datasets
-from evaluate import train_clf, test_matrix, train_reg, test_reg
+from evaluate import train_clf, test_matrix, train_reg, test_reg, encode_train_set
 
 
 def encode_feature_averaging(clftrainloader, device, net, col_distort, batch_transform, target=None, num_passes=10):
@@ -90,14 +90,20 @@ def main(args):
 
     batch_transform = batch_transform.to(device)
 
-    X, y = encode_feature_averaging(clftrainloader, device, net, col_distort, batch_transform,
-                                    num_passes=args.num_passes, target='cpu')
-    X_test, y_test = encode_feature_averaging(testloader, device, net, col_distort, batch_transform,
-                                              num_passes=args.num_passes, target='cpu')
+    if args.untransformed:
+        X, y = encode_train_set(clftrainloader, device, net)
+        X_test, y_test = encode_train_set(testloader, device, net)
+    else:
+        X, y = encode_feature_averaging(clftrainloader, device, net, col_distort, batch_transform,
+                                        num_passes=args.num_passes, target='cpu')
+        X_test, y_test = encode_feature_averaging(testloader, device, net, col_distort, batch_transform,
+                                                  num_passes=args.num_passes, target='cpu')
+        X = X.mean(0)
+        X_test = X_test.mean(0)
+
     if args.num_passes > 1:
         print("Feature averaging with M =", args.num_passes)
-    X = X.mean(0)
-    X_test = X_test.mean(0)
+
     if task == "clf":
         clf = train_clf(X.to(device), y.to(device), net.representation_dim, num_classes, device,
                         reg_weight=args.reg_weight)

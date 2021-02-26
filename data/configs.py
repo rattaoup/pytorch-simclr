@@ -21,19 +21,19 @@ def get_mean_std(dataset):
 
 
 def get_datasets(dataset, augment_clf_train=False, add_indices_to_data=False, augment_test=False,
-                 train_proportion=1.,s = 0.5):
+                 train_proportion=1.,s=0.5):
     if dataset == 'spirograph':
-        return get_spirograph_dataset(train_proportion = train_proportion)
+        return get_spirograph_dataset(train_proportion=train_proportion)
     else:
         return get_img_datasets(dataset=dataset, augment_clf_train=augment_clf_train,
                                 add_indices_to_data=add_indices_to_data, augment_test=augment_test,
-                                train_proportion=train_proportion, s = s)
+                                train_proportion=train_proportion, s=s)
 
 
 def get_spirograph_dataset(train_proportion=1., rgb_fore_bounds=(.4, 1), rgb_back_bounds=(0, .6), h_bounds=(.5, 2.5)):
 
     spirograph = DrawSpirograph(['m', 'b', 'sigma', 'rfore'], ['h', 'rback', 'gfore', 'gback', 'bfore', 'bback'],
-                                rgb_fore_bounds= rgb_fore_bounds, rgb_back_bounds=rgb_back_bounds, h_bounds = h_bounds,
+                                rgb_fore_bounds= rgb_fore_bounds, rgb_back_bounds=rgb_back_bounds, h_bounds=h_bounds,
                                 train_proportion=train_proportion)
     stem = StemCIFAR
     trainset, clftrainset, testset = spirograph.dataset()
