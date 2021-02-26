@@ -3,38 +3,12 @@ import torch.backends.cudnn as cudnn
 
 import os
 import argparse
-from tqdm import tqdm
 
 from models import *
 from data.configs import get_datasets
-from evaluate import train_clf, test_matrix, train_reg, test_reg, test_reg_component, encode_train_set
-
-
-def encode_feature_averaging(clftrainloader, device, net, col_distort, batch_transform, target=None, num_passes=10):
-    if target is None:
-        target = device
-
-    net.eval()
-
-    X, y = [], None
-    with torch.no_grad():
-        for _ in tqdm(range(num_passes)):
-            store = []
-            for batch_idx, (inputs, targets) in enumerate(clftrainloader):
-                inputs, targets = inputs.to(device), targets.to(device)
-                rn = col_distort.sample_random_numbers(inputs.shape, inputs.device)
-                inputs = batch_transform(inputs, rn)
-                representation = net(inputs)
-                representation, targets = representation.to(target), targets.to(target)
-                store.append((representation, targets))
-
-            Xi, y = zip(*store)
-            Xi, y = torch.cat(Xi, dim=0), torch.cat(y, dim=0)
-            X.append(Xi)
-
-    X = torch.stack(X, dim=0)
-
-    return X, y
+from evaluate import (
+    train_clf, test_matrix, train_reg, test_reg, test_reg_component, encode_train_set, encode_feature_averaging
+)
 
 
 def main(args):

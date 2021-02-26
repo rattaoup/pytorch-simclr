@@ -164,3 +164,30 @@ def test_reg_component(X, y, reg):
         for i in range(raw_scores.size()[1]):
             loss_list.append(criterion(raw_scores[:,i],y[:,i]))
     return torch.tensor(loss_list)
+
+
+def encode_feature_averaging(clftrainloader, device, net, col_distort, batch_transform, target=None, num_passes=10):
+    if target is None:
+        target = device
+
+    net.eval()
+
+    X, y = [], None
+    with torch.no_grad():
+        for _ in tqdm(range(num_passes)):
+            store = []
+            for batch_idx, (inputs, targets) in enumerate(clftrainloader):
+                inputs, targets = inputs.to(device), targets.to(device)
+                rn = col_distort.sample_random_numbers(inputs.shape, inputs.device)
+                inputs = batch_transform(inputs, rn)
+                representation = net(inputs)
+                representation, targets = representation.to(target), targets.to(target)
+                store.append((representation, targets))
+
+            Xi, y = zip(*store)
+            Xi, y = torch.cat(Xi, dim=0), torch.cat(y, dim=0)
+            X.append(Xi)
+
+    X = torch.stack(X, dim=0)
+
+    return X, y

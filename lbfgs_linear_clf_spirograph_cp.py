@@ -1,4 +1,4 @@
-#### FILE FLAGGED FOR CLEANUP AND MERGE WITH lbfgs_lienar_clf_spirograph.py
+#### FILE FLAGGED FOR DELETION
 
 '''Train CIFAR10/100 with PyTorch using standard Contrastive Learning. This script tunes evaluates the invariance of
 the learned representations.'''

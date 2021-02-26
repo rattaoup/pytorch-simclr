@@ -1,4 +1,4 @@
-#### FILE FLAGGED FOR CLEANUP AND MERGE WITH lbfgs_lienar_clf_spirograph_cp.py
+#### FILE FLAGGED FOR DELETION
 
 '''This script tunes the L2 reg weight of the final classifier.'''
 import argparse
