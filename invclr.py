@@ -33,7 +33,7 @@ def train(epoch, net, critic, trainloader, device, col_distort, batch_transform,
         rn1, rn2 = col_distort.sample_random_numbers(x1.shape, x1.device), col_distort.sample_random_numbers(x2.shape, x2.device)
         shape = (x1.shape[0] * 100, *x1.shape[1:])
         rn_extra = col_distort.sample_random_numbers(shape, x1.device)
-        rn_extra = rn_extra.reshape((100, x1.shape[10], rn_extra.shape[-1]))
+        rn_extra = rn_extra.reshape((100, x1.shape[0], rn_extra.shape[-1]))
         x1, x2 = batch_transform(x1, rn1), batch_transform(x2, rn2)
         encoder_optimizer.zero_grad()
         representation1, representation2 = net(x1), net(x2)

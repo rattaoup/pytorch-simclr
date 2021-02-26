@@ -7,7 +7,7 @@ from torch.utils.data import Subset
 from collections import defaultdict
 
 from data.augmentation import ColourDistortion, TensorNormalise, ModuleCompose
-from spirograph import DrawSpirograph
+from data.spirograph import DrawSpirograph
 from data.dataset import *
 from models import *
 
