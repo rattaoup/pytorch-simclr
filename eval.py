@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from models import *
 from data.configs import get_datasets
-from evaluate import train_clf, test_matrix, train_reg, test_reg, encode_train_set
+from evaluate import train_clf, test_matrix, train_reg, test_reg, test_reg_component, encode_train_set
 
 
 def encode_feature_averaging(clftrainloader, device, net, col_distort, batch_transform, target=None, num_passes=10):
@@ -53,6 +53,9 @@ def main(args):
     elif args.untransformed and args.dataset == 'spirograph':
         raise ValueError("Spirograph does not support untransformed inputs")
     aug = not args.untransformed
+
+    if args.componentwise and args.dataset != 'spirograph':
+        raise ValueError("Componentwise results are only available for Spirograph")
 
     # Data
     print('==> Preparing data..')
@@ -108,13 +111,17 @@ def main(args):
         clf = train_clf(X.to(device), y.to(device), net.representation_dim, num_classes, device,
                         reg_weight=args.reg_weight)
         acc, loss = test_matrix(X_test.to(device), y_test.to(device), clf)
+        results = {"Accuracy": acc, "Cross Entropy Loss": loss}
     elif task == "reg":
         regressor = train_reg(X, y, device, reg_weight=args.reg_weight)
-        loss = test_reg(X_test, y_test, regressor)
-        acc = None
+        if args.componentwise:
+            results = test_reg_component(X_test, y_test, clf)
+        else:
+            loss = test_reg(X_test, y_test, regressor)
+            results = {"MSE Loss": loss}
     else:
         raise ValueError("Unexpected task type: %s" % task)
-    results = {"Accuracy": acc, "Loss": loss}
+
     return results
 
 
@@ -128,5 +135,7 @@ if __name__ == '__main__':
     parser.add_argument("--proportion", type=float, default=1., help='Proportion of train data to use')
     parser.add_argument("--untransformed", action="store_true", default=False,
                         help="Use untransformed inputs")
+    parser.add_argument("--componentwise", action="store_true", default=False,
+                        help="For Spirograph, present results on each regression task separately.")
     args = parser.parse_args()
     print(main(args))
