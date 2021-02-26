@@ -141,7 +141,7 @@ def main(args):
 
     batch_transform = batch_transform.to(device)
 
-    for epoch in range(start_epoch, min(args.num_epochs, args.cut_off)):
+    for epoch in range(start_epoch, args.num_epochs):
         outputs = train(
             epoch, net, critic, trainloader, device, col_distort, batch_transform, encoder_optimizer, criterion
         )
@@ -188,9 +188,6 @@ if __name__ == '__main__':
                                                                   'classifier only training here.')
     parser.add_argument("--save-freq", type=int, default=100, help='Frequency to save checkpoints.')
     parser.add_argument("--filename", type=str, default='ckpt', help='Output file name')
-    # TODO Eliminiate cut off as separate from num_epochs
-    parser.add_argument("--cut-off", type=int, default=1000, help='Prematurely terminate the run at this epoch '
-                                                                  'If larger than num-epochs, has no effect')
     parser.add_argument("--git", action='store_true', help="Record the git hash and diff (uses a subprocess call)")
     args = parser.parse_args()
     args.lr = args.base_lr * (args.batch_size / 256)

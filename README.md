@@ -16,31 +16,28 @@ To use the Spirograph dataset on its own, see this [standalone repo](https://git
 
 ## Training an encoder
 We support multi-GPU `DataParallel` training.
-Use the following command to train an encoder from scratch on CIFAR-10
+Use the following command to train an encoder from scratch on CIFAR-10. We ran this using 8 GPUs.
 ```bash
 $ python3 invclr.py \
-  --base-lr 1.5 \
   --num-epochs 1000 \
   --cosine-anneal \
   --arch resnet50 \
   --dataset cifar10 \
-  --lambda-gp 1e-2 \
-  --filename output
+  --lambda-gp 1e-1 \
+  --filename cifar10_run
 ```
-with a similar command for `cifar100`.
+Set `--dataset cifar100` to train on CIFAR-100.
 To train an encoder on the Spirograph dataset, use
 ```bash
 $ python3 invclr.py \
-  --base-lr 1.5 \
   --num-epochs 50 \
   --cosine-anneal \
   --test-freq 0 \
   --save-freq 10 \
-  --cut-off 50 \
   --arch resnet18 \
   --dataset spirograph \
   --lambda-gp 1e-2 \
-  --filename output \
+  --filename spirograph_run \
   --gp-upper-limit 1000
 ```
 You can set `--lambda-gp 0` to train an encoder with no gradient penalty.
