@@ -13,6 +13,8 @@ This is a [PyTorch](https://github.com/pytorch/pytorch) implementation of the IC
 Install PyTorch following the instructions [here](https://pytorch.org/). Download the the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) and [CIFAR-100](https://www.cs.toronto.edu/~kriz/cifar.html) datasets.
 The Spirograph dataset is included in this code base.
 To use the Spirograph dataset on its own, see this [standalone repo](https://github.com/rattaoup/spirograph).
+To install the requisite packages for this project, use `pip install -r requirements.txt`.
+Note: to install `torchlars` it is necessary to set the environment variable `CUDA_HOME`
 
 ## Training an encoder
 We support multi-GPU `DataParallel` training.
