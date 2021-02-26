@@ -114,7 +114,7 @@ def main(args):
         acc = None
     else:
         raise ValueError("Unexpected task type: %s" % task)
-    results = (acc, loss)
+    results = {"Accuracy": acc, "Loss": loss}
     return results
 
 

@@ -45,28 +45,52 @@ $ python3 invclr.py \
 You can set `--lambda-gp 0` to train an encoder with no gradient penalty.
 
 ## Evaluating an encoder
-Use the following command to evaluate the trained encoder on a classification task
+Use the following command to evaluate the trained CIFAR-10 encoder on untransformed inputs with a fraction 50% of
+the labels used at training
+```bash
+$ python3 eval.py \
+  --load-from cifar10_run_epoch999.pth \
+  --untransformed \
+  --proportion 0.5
 ```
-$ python3 lbfgs_linear_clf.py --load-from output_epoch999.pth
+for Spirograph, we used
+```bash
+$ python3 eval.py \
+  --load-from spirograph_run_epoch049.pth \
+  --reg-weight 1e-8 \
+  --proportion 0.5
 ```
-and the regression task on generative parameters for the spirograph dataset
-```
-$ python3 lbfgs_linear_clf_spirograph.py --load-from output_sg_epoch049.pth
-```
+
 ### Component-wise regression tasks for Spirograph
+TODO: add this to the `eval` script
+
 In addition, we can look at each downstream tasks as in the Figure 3c) in the paper by running
 ```
 $ python3 lbfgs_linear_clf_spirograph_cp.py --load-from output_sg_epoch049.pth
 ```
 ### Feature averaging
-Use the following command to evaluate classification performance of feature averaging.
-```
-$ python3 feature_averaging.py --load-from output_epoch999.pth --min-num-passes 10 --max-num-passes 20	--step-num-passes 2
+Use the following command to evaluate classification performance of feature averaging using an average of 100 samples
+```bash
+$ python3 eval.py \
+  --load-from cifar10_run_epoch999.pth \
+  --num-passes 100 \
 ```
 for  Spirograph, run the following code
+```bash
+$ python3 eval.py \
+  --load-from spirograph_run_epoch049.pth \
+  --num-passes 100 \
+  --reg-weight 1e-8
 ```
-$ python3 feature_averaging_spirograph.py --load-from output_sg_epoch049.pth --min-num-passes 10 --max-num-passes 20 --step-num-passes 2
-```
+We obtained the following
+| Dataset    | Loss | Accuracy |
+|------------|------|----------|
+| CIFAR-10   |      |          |
+| CIFAR-100  |      |          |
+| Spirograph |      |          |
+
+
+
 
 TODO: Merge `feature_averaging.py` and `feature_averaging_spirograph.py` (done)
 
