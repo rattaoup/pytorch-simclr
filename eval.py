@@ -113,11 +113,15 @@ def main(args):
         acc, loss = test_matrix(X_test.to(device), y_test.to(device), clf)
         results = {"Accuracy": acc, "Cross Entropy Loss": loss}
     elif task == "reg":
-        regressor = train_reg(X, y, device, reg_weight=args.reg_weight)
+        regressor = train_reg(X.to(device), y.to(device), device, reg_weight=args.reg_weight)
         if args.componentwise:
-            results = test_reg_component(X_test, y_test, clf)
+            losses = test_reg_component(X_test.to(device), y_test.to(device), regressor)
+            results = {"m": losses[0].item(),
+                       "b": losses[1].item(),
+                       "sigma": losses[2].item(),
+                       "f_r": losses[3].item()}
         else:
-            loss = test_reg(X_test, y_test, regressor)
+            loss = test_reg(X_test.to(device), y_test.to(device), regressor)
             results = {"MSE Loss": loss}
     else:
         raise ValueError("Unexpected task type: %s" % task)
