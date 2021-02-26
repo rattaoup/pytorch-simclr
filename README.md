@@ -84,17 +84,3 @@ We obtained the following
 | CIFAR-100  |      |          |
 | Spirograph |      |          |
 
-
-
-
-TODO: Merge `feature_averaging.py` and `feature_averaging_spirograph.py` (done)
-
-TODO: refactor and test `invclr.py` on all datasets. Top priority!
-
-TODO: test `feature_averaging.py` works on spirograph and on cifar
-
-TODO: Merge `lbfgs_linear_clf_spirograph.py` and `lbfgs_linear_clf_spirograph_cp.py` and make this support classification with untransformed inputs for CIFAR
-
-TODO (after reproducing): include brief note on expected performance on CIFAR-10 CIFAR-100 Spirograph
-
-
