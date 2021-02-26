@@ -45,8 +45,8 @@ $ python3 invclr.py \
 You can set `--lambda-gp 0` to train an encoder with no gradient penalty.
 
 ## Evaluating an encoder
-Use the following command to evaluate the trained CIFAR-10 encoder on untransformed inputs with a fraction 50% of
-the labels used at training
+Use the following command to evaluate the trained CIFAR-10 encoder on untransformed inputs with 50% of
+the training labels used for supervized training
 ```bash
 $ python3 eval.py \
   --load-from cifar10_run_epoch999.pth \
