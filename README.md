@@ -16,6 +16,8 @@ To use the Spirograph dataset on its own, see this [standalone repo](https://git
 To install the requisite packages for this project, use `pip install -r requirements.txt`.
 Note: to install `torchlars` it is necessary to set the environment variable `CUDA_HOME`.
 
+Make a note about `dataset-paths.json`
+
 ## Training an encoder
 We support multi-GPU `DataParallel` training.
 Use the following command to train an encoder from scratch on CIFAR-10. We ran this using 8 GPUs.
@@ -68,7 +70,7 @@ Use the following command to evaluate classification performance of feature aver
 ```bash
 $ python3 eval.py \
   --load-from cifar10_run_epoch999.pth \
-  --num-passes 100 \
+  --num-passes 100 
 ```
 for  Spirograph, run the following code
 ```bash
